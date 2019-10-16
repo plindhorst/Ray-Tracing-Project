@@ -13,12 +13,14 @@ void Flyscene::initialize(int width, int height) {
   Tucano::MeshImporter::loadObjFile(mesh, materials,
                                     "resources/models/dodgeColorTest.obj");
 
+
   // normalize the model (scale to unit cube and center at origin)
   mesh.normalizeModelMatrix();
 
   // pass all the materials to the Phong Shader
   for (int i = 0; i < materials.size(); ++i)
     phong.addMaterial(materials[i]);
+
 
 
   // set the color and size of the sphere to represent the light sources
@@ -40,9 +42,8 @@ void Flyscene::initialize(int width, int height) {
 
   glEnable(GL_DEPTH_TEST);
 
-  // for (int i = 0; i<10; ++i){
-  //   Tucano::Face face = mesh.getFace(i);
-  //   std::cout<<"face "<<i<<std::endl;
+  // for (int i = 0; i<mesh.getNumberOfFaces(); ++i){
+  //   Tucano::Face face = mesh.getFace(i);    
   //   for (int j =0; j<face.vertex_ids.size(); ++j){
   //     std::cout<<"vid "<<j<<" "<<face.vertex_ids[j]<<std::endl;
   //     std::cout<<"vertex "<<mesh.getVertex(face.vertex_ids[j]).transpose()<<std::endl;

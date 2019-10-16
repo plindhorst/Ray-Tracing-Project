@@ -110,26 +110,35 @@ static void loadObjFile (Tucano::Mesh& mesh, vector<Tucano::Material::Mtl>& mtls
     elementsVertices.push_back( vector<GLuint>() );
     elementsNormals.push_back( vector<GLuint>() );
     elementsTexIDs.push_back( vector<GLuint>() );
+    elements_material_id.push_back (-1);
+
 
     //Reading file:
     string line;
     int current_mat = -1;
+    
     while(getline(in,line))
     {
-
         if(line.substr(0, 6) == "mtllib")
         {
             istringstream s(line.substr(7));
-            Tucano::MaterialImporter::loadMTL(mtls, path + line.substr(7));      
+            
+            //Tucano::MaterialImporter::loadMTL(mtls, path + line.substr(7)); 
+            string mtlfn = path + line.substr(7);
+            // remove newline or carriage return characters from the end
+            mtlfn.erase(std::remove(mtlfn.begin(), mtlfn.end(), '\n'), mtlfn.end());
+            mtlfn.erase(std::remove(mtlfn.begin(), mtlfn.end(), '\r'), mtlfn.end());
+            Tucano::MaterialImporter::loadMTL(mtls, mtlfn);
         }
         else if(line.substr(0, 6) == "usemtl")
         {
-            // check if last index array is still empty
+            // check if last index array is still empty, otherwise create new vecs
             if (!elementsVertices.back().empty())
             {
                 elementsVertices.push_back( vector<GLuint>() );
                 elementsNormals.push_back( vector<GLuint>() );
                 elementsTexIDs.push_back( vector<GLuint>() );
+                elements_material_id.push_back (-1);
             }
 
             istringstream s(line.substr(7));
@@ -139,8 +148,9 @@ static void loadObjFile (Tucano::Mesh& mesh, vector<Tucano::Material::Mtl>& mtls
                 {
                     current_mat = i;
                 }
-            }    
-            elements_material_id.push_back (current_mat);        
+            } 
+            elements_material_id.back() = current_mat;
+                   
         }
 
         //Vertices reading:
@@ -181,35 +191,33 @@ static void loadObjFile (Tucano::Mesh& mesh, vector<Tucano::Material::Mtl>& mtls
         else if(line.substr(0,2) == "f ")
         {
             int vertexId, normalId, textureId;
-            istringstream s(line.substr(2));
+            std::stringstream liness(line.substr(2));
+            std::string buf, element;
 
-            while(!s.eof())
+            std::vector<std::string> face_element; // Create vector to hold our face elements
+            while (liness >> buf)
+                face_element.push_back(buf);
+
+            // for each face element parse the vertex, texture and normal ids
+            for (int i = 0; i < face_element.size(); ++i)
             {
-                s >> vertexId;
-
+                std::stringstream elementss (face_element[i]);
+                std::getline(elementss, element, '/');
+                vertexId = stoi(element);
                 elementsVertices.back().push_back(vertexId-1);
-                // check if more attributes are available
-                if(s.peek() == '/')
+
+                if (std::getline(elementss, element, '/'))
+                
+                if (element.compare("") != 0)
                 {
-                    s.get();
-                    // if another slash, then there is no tex coord, jump to normal
-                    if(s.peek() == '/')
-                    {
-                        s.get();
-                        s >> normalId;                        
-                        elementsNormals.back().push_back(normalId-1);
-                    }
-                    else
-                    {
-                        s >> textureId;
-                        elementsTexIDs.back().push_back(textureId-1);                        
-                        if(s.peek() == '/')
-                        {
-                            s.get();
-                            s >> normalId;                            
-                            elementsNormals.back().push_back(normalId-1);
-                        }
-                    }
+                    textureId = stoi(element);
+                    elementsTexIDs.back().push_back(textureId-1);
+                }
+                if (std::getline(elementss, element, '/'))
+                if (element.compare("") != 0)
+                {
+                    normalId = stoi(element);
+                    elementsNormals.back().push_back(normalId-1);
                 }
             }
         }

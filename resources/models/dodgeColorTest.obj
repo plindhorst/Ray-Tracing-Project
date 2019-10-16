@@ -9,7 +9,7 @@
 # Faces: 16311
 #
 ####
-mtllib ./dodgeColorTest.mtl
+mtllib dodgeColorTest.mtl
 
 vn -0.543924 3.088255 3.093019
 v 0.140832 0.253272 0.185866 0.752941 0.752941 0.752941

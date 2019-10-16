@@ -419,6 +419,11 @@ public:
      */
     Face& getFace (int i) { return faces[i]; }
 
+    /* @brief Get the number of Faces
+     * @return Size of faces vector
+     */
+    int getNumberOfFaces (void) { return faces.size(); }
+
     /**
      * @brief Get the number of index buffers
      * @return Number of index buffers

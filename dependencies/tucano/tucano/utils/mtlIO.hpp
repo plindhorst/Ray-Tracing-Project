@@ -53,6 +53,7 @@ static bool loadMTL (vector<Tucano::Material::Mtl>& materials, string filename)
     }
     else
     {
+        std::cout << "Reading:" << filename.c_str() << std::endl; 
         for( std::string line; getline( in, line ); )
         {
             std::stringstream ss(line);
