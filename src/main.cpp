@@ -45,7 +45,7 @@ void initialize(void) {
             << " ************ usage ************** " << std::endl;
   std::cout << "R    : Reset camera." << std::endl;
   std::cout << "WASD : Move camera in xz plane." << std::endl;
-  std::cout << "QEZC : Move camera along y axis." << std::endl;
+  std::cout << "SHIFT, CONTROL : Move camera along y axis." << std::endl;
   std::cout << "SPACE: Shoot debug ray from mouse cursor position." << std::endl;
   std::cout << "L    : Add new light source at current camera position."
             << std::endl;
