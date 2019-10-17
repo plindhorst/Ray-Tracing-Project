@@ -11,6 +11,7 @@
 #include <tucano/shapes/camerarep.hpp>
 #include <tucano/shapes/cylinder.hpp>
 #include <tucano/shapes/sphere.hpp>
+#include <tucano/shapes/box.hpp>
 #include <tucano/utils/flycamera.hpp>
 #include <tucano/utils/imageIO.hpp>
 #include <tucano/utils/mtlIO.hpp>
@@ -100,6 +101,14 @@ private:
 
   /// MTL materials
   vector<Tucano::Material::Mtl> materials;
+
+  // SELFMADE
+
+  void generateBoxes();
+
+  void renderBoxes();
+
+  vector<Tucano::Shapes::Box> boxes;
 };
 
 #endif // FLYSCENE

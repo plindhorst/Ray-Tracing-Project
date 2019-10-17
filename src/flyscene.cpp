@@ -54,7 +54,7 @@ void Flyscene::initialize(int width, int height) {
   // }
 
 
-
+  generateBoxes();
 }
 
 void Flyscene::paintGL(void) {
@@ -87,6 +87,8 @@ void Flyscene::paintGL(void) {
 
   // render coordinate system at lower right corner
   flycamera.renderAtCorner();
+
+  renderBoxes();
 }
 
 void Flyscene::simulate(GLFWwindow *window) {
@@ -159,4 +161,19 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
   // remember to return your RGB values as floats in the range [0, 1]!!!
   return Eigen::Vector3f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
                          rand() / (float)RAND_MAX);
+}
+
+void Flyscene::generateBoxes() {
+	Tucano::Shapes::Box box = Tucano::Shapes::Box();
+	Eigen::Affine3f boxModelMatrix = Eigen::Affine3f::Identity();
+	boxModelMatrix.translate(Eigen::Vector3f(1, 0, -1));
+	box.setModelMatrix(boxModelMatrix);
+	boxes.push_back(box);
+}
+
+void Flyscene::renderBoxes() {
+	for (auto box : boxes)
+	{
+		box.render(flycamera, scene_light);
+	}
 }
