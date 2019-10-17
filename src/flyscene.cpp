@@ -154,10 +154,13 @@ void Flyscene::raytraceScene(int width, int height) {
 
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest) {
+	// Parameters to keep track of current faces and the closest face
 	float minimum_distance = FLT_MAX;
 	Tucano::Face minimum_face;
 	float current_distance;
 	Tucano::Face current_face;
+	
+	// Loop through all faces, calculate the distance and update the minimum_face whenever necessary
 	for (int i = 0; i < mesh.getNumberOfFaces; i++) {
 		current_face = mesh.getFace(i);
 		if (intersects(origin, dest, current_face)) {
@@ -167,6 +170,14 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &des
 				minimum_face = current_face;
 			}
 		}
+	}
+
+	// Test if the ray intersected with a face, if so: calculate the color
+	if (minimum_distance != FLT_MAX) {
+		// TO DO: calculate the color for the minimum_face
+	}
+	else {
+		// TO DO: return desired color if no face was intersected
 	}
 
   // just some fake random color per pixel until you implement your ray tracing

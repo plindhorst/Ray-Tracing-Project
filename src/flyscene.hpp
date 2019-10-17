@@ -69,8 +69,11 @@ public:
    */
   Eigen::Vector3f traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest);
 
-  
+  // TO DO: insert documentation
   bool intersects(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face);
+
+  // TO DO: insert documentation
+  float calculateDistance(Eigen::Vector3f& origin, Tucano::Face face);
 
 private:
   // A simple phong shader for rendering meshes
