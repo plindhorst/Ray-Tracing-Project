@@ -11,7 +11,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/dodgeColorTest.obj");
+                                    "resources/models/toy.obj");
 
 
   // normalize the model (scale to unit cube and center at origin)
@@ -163,11 +163,46 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                          rand() / (float)RAND_MAX);
 }
 
-void Flyscene::generateBoxes() {
+void Flyscene::generateBoxes(){
+	Eigen::Vector4f w = mesh.getVertex(0);
+	float minx = w(0), miny = w(1), minz = w(2);
+	float maxx = w(0), maxy = w(1), maxz = w(2);
+	std::cout << minx << "&" << maxx<<std::endl;
+
+	for (int i = 0; i < mesh.getNumberOfVertices(); i++){
+		Eigen::Vector4f v = mesh.getVertex(i);
+		float x = v(0);
+		float y = v(1);
+		float z = v(2);
+		if (x < minx){
+			minx = x;
+		} else if (x > maxx){
+			maxx = x;
+		}
+		if (y < miny){
+			miny = y;
+		} else if (y > maxy){
+			maxy = y;
+		}
+		if (z < minz){
+			minz = z;
+		} else if (z > maxz){
+			maxz = z;
+		}
+	}
+
 	Tucano::Shapes::Box box = Tucano::Shapes::Box();
 	Eigen::Affine3f boxModelMatrix = Eigen::Affine3f::Identity();
-	boxModelMatrix.translate(Eigen::Vector3f(1, 0, -1));
+	Eigen::Affine3f mat = mesh.getShapeModelMatrix();
+	boxModelMatrix(0, 0) = (maxx - minx);
+	boxModelMatrix(1, 1) = (maxy - miny);
+	boxModelMatrix(2, 2) = (maxz - minz);
+	boxModelMatrix(3, 3) = 1;
+	boxModelMatrix = mat * boxModelMatrix;
+	boxModelMatrix = boxModelMatrix.translate(mat.matrix().topLeftCorner<3,3>() * Eigen::Vector3f((maxx + minx) / 2, (maxy + miny) / 2, (maxz + minz) / 2)); // iets fout
 	box.setModelMatrix(boxModelMatrix);
+	std::cout << boxModelMatrix.matrix() << std::endl;
+	std::cout << mat.matrix() << std::endl;
 	boxes.push_back(box);
 }
 
