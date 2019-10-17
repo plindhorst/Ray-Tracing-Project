@@ -161,7 +161,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &des
 	Tucano::Face current_face;
 	
 	// Loop through all faces, calculate the distance and update the minimum_face whenever necessary
-	for (int i = 0; i < mesh.getNumberOfFaces; i++) {
+	for (int i = 0; i < mesh.getNumberOfFaces(); i++) {
 		current_face = mesh.getFace(i);
 		if (intersects(origin, dest, current_face)) {
 			current_distance = calculateDistance(origin, current_face);
