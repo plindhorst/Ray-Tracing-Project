@@ -69,6 +69,16 @@ public:
    */
   Eigen::Vector3f traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest);
 
+  /**
+  *Check if light is obstructed
+  */
+  bool shadow(Eigen::Vector3f& dest, Eigen::Vector3f& light);
+
+  /**
+  *From ray-intersect
+  */
+  bool intersection(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face);
+
 private:
   // A simple phong shader for rendering meshes
   Tucano::Effects::PhongMaterial phong;

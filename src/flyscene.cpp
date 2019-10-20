@@ -160,3 +160,18 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
   return Eigen::Vector3f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
                          rand() / (float)RAND_MAX);
 }
+
+bool Flyscene::intersection(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face) {
+	return true;
+}
+
+bool Flyscene::shadow(Eigen::Vector3f& dest, Eigen::Vector3f& light) {
+	Tucano::Face current_face;
+	for (int i = 0; i < Flyscene::mesh.getNumberOfFaces; i++) {
+		current_face = mesh.getFace(i);
+		if (intersection(light, dest, current_face)) {
+			return true;
+		}
+	}
+	return false;
+}
