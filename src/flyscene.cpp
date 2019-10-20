@@ -165,12 +165,10 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 	// Loop through all faces, calculate the distance and update the minimum_face whenever necessary
 	for (int i = 0; i < mesh.getNumberOfFaces(); i++) {
 		current_face = mesh.getFace(i);
-		if (intersects(origin, dest, current_face)) {
-			current_distance = calculateDistance(origin, current_face);
-			if (0 <= current_distance && current_distance < minimum_distance) {
-				minimum_distance = current_distance;
-				minimum_face = current_face;
-			}
+		current_distance = intersectsDistance(origin, dest, current_face);
+		if (0 <= current_distance && current_distance < minimum_distance) {
+			minimum_distance = current_distance;
+			minimum_face = current_face;
 		}
 	}
 
@@ -178,31 +176,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance != FLT_MAX) {
-		Tucano::Material::Mtl material = materials[minimum_face.material_id];
-		Eigen::Vector3f ka = material.getAmbient();
-		Eigen::Vector3f kd = material.getDiffuse();
-		Eigen::Vector3f ks = material.getSpecular();
-		float shininess = material.getShininess();
-		float refraction_index = material.getOpticalDensity();
-		float transparency = material.getDissolveFactor();
-
-		Eigen::Affine3f viewMatrix = flycamera.getViewMatrix();
-		Eigen::Matrix4f projectionMatrix = flycamera.getProjectionMatrix();
-		Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
-		Eigen::Affine3f lightViewMatrix = scene_light.getViewMatrix();
-
-		Eigen::Vector3f normal = minimum_face.normal.normalized();
-		Eigen::Vector3f lightDirection = (viewMatrix * lightViewMatrix.inverse() * Eigen::Vector3f(0.0, 0.0, 1.0)).normalized();
-		Eigen::Vector3f lightReflection = (-lightDirection - 2 * (normal.dot(-lightDirection)) * normal).normalized();
-		Eigen::Vector3f eyeDirection = (origin - dest).normalized();
-
-		Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
-
-		Eigen::Vector3f ambient = light_intensity.cross(ka);
-		Eigen::Vector3f diffuse = light_intensity.cross(kd) * std::max(lightDirection.dot(normal), 0.f);
-		Eigen::Vector3f specular = light_intensity.cross(ks) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);
-
-		color = ambient + diffuse + specular;
+		//color = calculateColor(minimum_distance, minimum_face, origin, dest);
 	}
 	else { // no face was intersected: return background color
 		color = Eigen::Vector3f(0.9, 0.9, 0.9);
@@ -211,12 +185,76 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 	return color;
 }
 
-bool Flyscene::intersects(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
-	// TO DO: Implement intersection test with the given face
-	return true;
+bool Flyscene::intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
+	//get vertices and normals of the face
+	Eigen::Vector4f vertices[3];
+	Eigen::Vector3f normals[3];
+	for (int i = 0; i < face.vertex_ids.size(); i++) {
+		vertices[i] = mesh.getVertex(face.vertex_ids[i]);
+		normals[i] = mesh.getNormal(face.vertex_ids[i]);
+	}
+
+	//get Normal of the face
+	Eigen::Vector3f facenormal = face.normal;
+
+	//Return false if triangle and direction of ray are the same
+	if (facenormal.dot(dest)) return (float) -1;
+	float distancePlane = facenormal.dot((Eigen::Vector3f) vertices[1]);
+	//Ray = origin + t*distance
+
+	float t = (facenormal.dot(origin) + distancePlane) / (facenormal.dot(dest));
+	Eigen::Vector3f PointP = origin + t * dest;
+	
+	//Inside-out test
+	Eigen::Vector3f edge0 = (Eigen::Vector3f) (vertices[1] - vertices[0]);
+	Eigen::Vector3f edge1 = (Eigen::Vector3f) (vertices[2] - vertices[1]);
+	Eigen::Vector3f edge2 = (Eigen::Vector3f) (vertices[0] - vertices[2]);
+	
+	Eigen::Vector3f Inner0 = PointP - (Eigen::Vector3f) vertices[0];
+	Eigen::Vector3f Inner1 = PointP - (Eigen::Vector3f) vertices[1];
+	Eigen::Vector3f Inner2 = PointP - (Eigen::Vector3f) vertices[2];
+
+	int area0 = facenormal.dot(edge0.cross(Inner0));
+	int area1 = facenormal.dot(edge1.cross(Inner1));
+	int area2 = facenormal.dot(edge2.cross(Inner2));
+	
+	//If any area is smaller or equal to zero, point is on the wrong side of the edge. 
+	if (area0 > 0 && area1 > 0 && area2 > 0) {
+		return (t * dest).size();
+	}
+	else return (float) -1;
 }
 
 float Flyscene::calculateDistance(Eigen::Vector3f& origin, Tucano::Face face) {
 	// TO DO: Implement distance calculation
-	return 0.0f;
+	return 0;
+}
+
+Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest) {
+	Tucano::Material::Mtl material = materials[minimum_face.material_id];
+	Eigen::Vector3f ka = material.getAmbient();
+	Eigen::Vector3f kd = material.getDiffuse();
+	Eigen::Vector3f ks = material.getSpecular();
+	float shininess = material.getShininess();
+	float refraction_index = material.getOpticalDensity();
+	float transparency = material.getDissolveFactor();
+
+	Eigen::Affine3f viewMatrix = flycamera.getViewMatrix();
+	Eigen::Matrix4f projectionMatrix = flycamera.getProjectionMatrix();
+	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
+	Eigen::Affine3f lightViewMatrix = scene_light.getViewMatrix();
+
+	Eigen::Vector3f normal = minimum_face.normal.normalized();
+	Eigen::Vector3f lightDirection = (viewMatrix * lightViewMatrix.inverse() * Eigen::Vector3f(0.0, 0.0, 1.0)).normalized();
+	Eigen::Vector3f lightReflection = (-lightDirection - 2 * (normal.dot(-lightDirection)) * normal).normalized();
+	Eigen::Vector3f eyeDirection = (origin - dest).normalized();
+
+	Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
+
+	Eigen::Vector3f ambient = light_intensity.cross(ka);
+	Eigen::Vector3f diffuse = light_intensity.cross(kd) * std::max(lightDirection.dot(normal), 0.f);
+	Eigen::Vector3f specular = light_intensity.cross(ks) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);
+
+	Eigen::Vector3f color = ambient + diffuse + specular;
+	return color;
 }

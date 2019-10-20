@@ -70,10 +70,12 @@ public:
   Eigen::Vector3f traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest);
 
   // TO DO: insert documentation
-  bool intersects(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face);
+  bool intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face);
 
   // TO DO: insert documentation
   float calculateDistance(Eigen::Vector3f& origin, Tucano::Face face);
+
+  Eigen::Vector3f calculateColor(float minimum_distance, Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest);
 
 private:
   // A simple phong shader for rendering meshes
