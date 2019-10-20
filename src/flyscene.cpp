@@ -197,15 +197,15 @@ void Flyscene::generateBoxes() {
 	Tucano::Shapes::Box box = Tucano::Shapes::Box();
 	Eigen::Affine3f boxModelMatrix = Eigen::Affine3f::Identity();
 	Eigen::Affine3f mat = mesh.getShapeModelMatrix();
-	boxModelMatrix(0, 0) = (maxx - minx);
-	boxModelMatrix(1, 1) = (maxy - miny);
-	boxModelMatrix(2, 2) = (maxz - minz);
-	boxModelMatrix(3, 3) = 1;
-	boxModelMatrix.translate(Eigen::Vector3f(0, 0, 0));
+	float dx = maxx - minx;
+	float dy = maxy - miny;
+	float dz = maxz - minz;
+	boxModelMatrix.translate(Eigen::Vector3f(dx / 2 + minx, dy / 2 + miny, dz / 2 + minz)); 
+	boxModelMatrix(0, 0) = dx;
+	boxModelMatrix(1, 1) = dy;
+	boxModelMatrix(2, 2) = dz;
 	boxModelMatrix = mat * boxModelMatrix;
 	box.setModelMatrix(boxModelMatrix);
-	std::cout << boxModelMatrix.matrix() << std::endl;
-	std::cout << mat.matrix() << std::endl;
 	boxes.push_back(box);
 }
 
