@@ -16,6 +16,7 @@
 #include <tucano/utils/imageIO.hpp>
 #include <tucano/utils/mtlIO.hpp>
 #include <tucano/utils/objimporter.hpp>
+#include "../Box.h"
 
 class Flyscene {
 
@@ -107,8 +108,6 @@ private:
   void generateBoxes();
 
   void renderBoxes();
-
-  vector<Tucano::Shapes::Box> boxes;
 };
 
 #endif // FLYSCENE

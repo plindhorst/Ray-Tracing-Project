@@ -164,54 +164,17 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin,
 }
 
 void Flyscene::generateBoxes() {
-	Eigen::Vector4f w = mesh.getVertex(0);
-	float minx = w(0), miny = w(1), minz = w(2);
-	float maxx = w(0), maxy = w(1), maxz = w(2);
-	std::cout << minx << "&" << maxx << std::endl;
-
-	for (int i = 0; i < mesh.getNumberOfVertices(); i++) {
-		Eigen::Vector4f v = mesh.getVertex(i);
-		float x = v(0);
-		float y = v(1);
-		float z = v(2);
-		if (x < minx) {
-			minx = x;
-		}
-		else if (x > maxx) {
-			maxx = x;
-		}
-		if (y < miny) {
-			miny = y;
-		}
-		else if (y > maxy) {
-			maxy = y;
-		}
-		if (z < minz) {
-			minz = z;
-		}
-		else if (z > maxz) {
-			maxz = z;
-		}
-	}
-
-	Tucano::Shapes::Box box = Tucano::Shapes::Box();
-	Eigen::Affine3f boxModelMatrix = Eigen::Affine3f::Identity();
-	Eigen::Affine3f mat = mesh.getShapeModelMatrix();
-	float dx = maxx - minx;
-	float dy = maxy - miny;
-	float dz = maxz - minz;
-	boxModelMatrix.translate(Eigen::Vector3f(dx / 2 + minx, dy / 2 + miny, dz / 2 + minz)); 
-	boxModelMatrix(0, 0) = dx;
-	boxModelMatrix(1, 1) = dy;
-	boxModelMatrix(2, 2) = dz;
-	boxModelMatrix = mat * boxModelMatrix;
-	box.setModelMatrix(boxModelMatrix);
-	boxes.push_back(box);
+	Box box = Box();
+	box.fitMesh(mesh);
 }
 
 void Flyscene::renderBoxes() {
-	for (auto box : boxes)
+	for (auto box : Box::boxes)
 	{
-		box.render(flycamera, scene_light);
+		box->render(flycamera, scene_light);
 	}
+}
+
+void Flyscene::splitBox(Tucano::Shapes::Box& box) {
+
 }
