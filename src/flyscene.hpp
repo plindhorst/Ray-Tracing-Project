@@ -70,7 +70,7 @@ public:
   Eigen::Vector3f traceRay(Eigen::Vector3f &origin, Eigen::Vector3f &dest);
 
   // TO DO: insert documentation
-  bool intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face);
+  double intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face);
 
   // TO DO: insert documentation
   float calculateDistance(Eigen::Vector3f& origin, Tucano::Face face);

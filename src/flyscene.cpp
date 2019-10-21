@@ -157,9 +157,9 @@ void Flyscene::raytraceScene(int width, int height) {
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dest) {
 	// Parameters to keep track of current faces and the closest face
-	float minimum_distance = FLT_MAX;
+	double minimum_distance = DBL_MAX;
 	Tucano::Face minimum_face;
-	float current_distance;
+	double current_distance;
 	Tucano::Face current_face;
 
 	// Loop through all faces, calculate the distance and update the minimum_face whenever necessary
@@ -172,25 +172,22 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 		}
 	}
 
-	Eigen::Vector3f color;
+	Eigen::Vector3f color = Eigen::Vector3f::Random();
 
 	// Test if the ray intersected with a face, if so: calculate the color
-	if (minimum_distance != FLT_MAX) {
+	//if (minimum_distance != FLT_MAX) {
 		//color = calculateColor(minimum_distance, minimum_face, origin, dest);
-	}
-	else { // no face was intersected: return background color
-		color = Eigen::Vector3f(0.9, 0.9, 0.9);
-	}
+	//}
 
 	return color;
 }
 
-bool Flyscene::intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
+double Flyscene::intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
 	//get vertices and normals of the face
-	Eigen::Vector4f vertices[3];
+	Eigen::Vector3f vertices[3];
 	Eigen::Vector3f normals[3];
 	for (int i = 0; i < face.vertex_ids.size(); i++) {
-		vertices[i] = mesh.getVertex(face.vertex_ids[i]);
+		vertices[i] = mesh.getVertex(face.vertex_ids[i]).head<3>();
 		normals[i] = mesh.getNormal(face.vertex_ids[i]);
 	}
 
@@ -198,8 +195,8 @@ bool Flyscene::intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 	Eigen::Vector3f facenormal = face.normal;
 
 	//Return false if triangle and direction of ray are the same
-	if (facenormal.dot(dest)) return (float) -1;
-	float distancePlane = facenormal.dot((Eigen::Vector3f) vertices[1]);
+	if (facenormal.dot(dest)) return (double) -1;
+	float distancePlane = facenormal.dot(vertices[1]);
 	//Ray = origin + t*distance
 
 	float t = (facenormal.dot(origin) + distancePlane) / (facenormal.dot(dest));
@@ -220,9 +217,11 @@ bool Flyscene::intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 	
 	//If any area is smaller or equal to zero, point is on the wrong side of the edge. 
 	if (area0 > 0 && area1 > 0 && area2 > 0) {
-		return (t * dest).size();
+		Eigen::Vector3f distanceVector = t * dest;
+		double distance = (double) ::sqrt(distanceVector.sum());
+		return distance;
 	}
-	else return (float) -1;
+	else return (double) -1;
 }
 
 float Flyscene::calculateDistance(Eigen::Vector3f& origin, Tucano::Face face) {
