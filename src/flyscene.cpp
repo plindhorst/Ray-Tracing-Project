@@ -164,17 +164,16 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin,
 }
 
 void Flyscene::generateBoxes() {
-	Box box = Box();
-	box.fitMesh(mesh);
+	Cube* cube = new Cube(true);
+	cube->fitMesh(mesh);
 }
 
 void Flyscene::renderBoxes() {
-	for (auto box : Box::boxes)
-	{
-		box->render(flycamera, scene_light);
+	for (Cube* cube : Cube::cubes) {
+		cube->render(flycamera, scene_light);
 	}
 }
 
-void Flyscene::splitBox(Tucano::Shapes::Box& box) {
-
+Flyscene::~Flyscene() {
+	Cube::deconstruct();
 }

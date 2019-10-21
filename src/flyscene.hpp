@@ -1,6 +1,8 @@
 #ifndef __FLYSCENE__
 #define __FLYSCENE__
 
+#include "cube.h"
+
 // Must be included before glfw.
 #include <GL/glew.h>
 
@@ -16,7 +18,6 @@
 #include <tucano/utils/imageIO.hpp>
 #include <tucano/utils/mtlIO.hpp>
 #include <tucano/utils/objimporter.hpp>
-#include "../Box.h"
 
 class Flyscene {
 
@@ -108,6 +109,9 @@ private:
   void generateBoxes();
 
   void renderBoxes();
+
+public:
+  ~Flyscene();
 };
 
 #endif // FLYSCENE
