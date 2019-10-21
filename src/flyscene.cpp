@@ -11,7 +11,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/toy.obj");
+		"resources/models/bunny.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -166,6 +166,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin,
 void Flyscene::generateBoxes() {
 	Cube* cube = new Cube(true);
 	cube->fitMesh(mesh);
+	cube->splitcube();
 }
 
 void Flyscene::renderBoxes() {

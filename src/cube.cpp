@@ -9,13 +9,6 @@ Cube::Cube(bool remember) {
 	box.setModelMatrix(modelMatrix);
 }
 
-Cube::Cube(Eigen::Vector3f low, Eigen::Vector3f high, bool remember) {
-	Cube(bool(remember));
-	this->low = low;
-	this->high = high;
-	reshape();
-}
-
 void Cube::deconstruct() {
 	for (Cube* c : cubes) {
 		delete c;
@@ -36,14 +29,16 @@ void Cube::fit() {
 	box.setModelMatrix(modelMatrix);
 }
 
-void Cube::fit(Eigen::Vector3f low, Eigen::Vector3f high) {
-	this->low = low;
-	this->high = high;
-	fit();
-}
-
 void Cube::reshape() {
-	this->shape = high - low;
+	// Raw
+	rawShape = rawHigh - rawLow;
+	rawWidth = rawShape(0);
+	rawHeight = rawShape(1);
+	rawDepth = rawShape(2);
+	// Processed
+	low = mesh->getShapeModelMatrix() * rawLow;
+	high = mesh->getShapeModelMatrix() * rawHigh;
+	shape = high - low;
 	width = shape(0);
 	height = shape(1);
 	depth = shape(2);
@@ -58,9 +53,9 @@ bool Cube::hasFace(Tucano::Face& face) {
 }
 
 bool Cube::hasVertex(Eigen::Vector4f& vertex) {
-	return (vertex(0) >= low(0) && vertex(0) <= high(0)
-		&& vertex(1) >= low(1) && vertex(1) <= high(1)
-		&& vertex(2) >= low(2) && vertex(2) <= high(2));
+	return (vertex(0) >= rawLow(0) && vertex(0) <= rawHigh(0)
+		&& vertex(1) >= rawLow(1) && vertex(1) <= rawHigh(1)
+		&& vertex(2) >= rawLow(2) && vertex(2) <= rawHigh(2));
 }
 
 void Cube::fitMesh(Tucano::Mesh& mesh) {
@@ -73,6 +68,7 @@ void Cube::fitMesh(Tucano::Mesh& mesh) {
 
 void Cube::fitFaces() {
 	// Predefine min and max coördinates to random vertex of random face.
+	if (faces.size() <= 0) { return; }
 	Eigen::Vector4f temp = mesh->getVertex(faces[0]->vertex_ids[0]);
 	float minx, miny, minz, maxx, maxy, maxz;
 	minx = maxx = temp(0);
@@ -80,7 +76,7 @@ void Cube::fitFaces() {
 	minz = maxz = temp(2);
 
 	// Find lowest and highest coördinates.
-	for (int i = 0; i < mesh->getNumberOfFaces(); i++) {
+	for (int i = 0; i < faces.size(); i++) {
 		Tucano::Face face = *faces[i];
 		for (int j = 0; j < 3; j++) {
 			Eigen::Vector4f v = mesh->getVertex(face.vertex_ids[j]);
@@ -109,32 +105,49 @@ void Cube::fitFaces() {
 	}
 
 	// Fit to coördinates.
-	low = mesh->getShapeModelMatrix() * Eigen::Vector3f(minx, miny, minz);
-	high = mesh->getShapeModelMatrix() * Eigen::Vector3f(maxx, maxy, maxz);
+	rawLow = Eigen::Vector3f(minx, miny, minz);
+	rawHigh = Eigen::Vector3f(maxx, maxy, maxz);
 	fit();
 }
 
 void Cube::splitcube() {
-	//cube* newcube;
-	Eigen::Vector3f newHigh;
+	Eigen::Vector3f newRawHigh;
 
 	if (width >= height && width >= depth) {
-		width /= 2;
-		newHigh = high - Eigen::Vector3f(-width, 0, 0);
+		rawWidth /= 2;
+		newRawHigh = rawHigh - Eigen::Vector3f(rawWidth, 0, 0);
 	}
 	else if (height >= width && height >= depth) {
-		height /= 2;
-		newHigh = high - Eigen::Vector3f(0, -height, 0);
+		rawHeight /= 2;
+		newRawHigh = rawHigh - Eigen::Vector3f(0, rawHeight, 0);
 	}
 	else {
-		depth /= 2;
-		newHigh = high - Eigen::Vector3f(0, 0, -depth);
+		rawDepth /= 2;
+		newRawHigh = rawHigh - Eigen::Vector3f(0, 0, rawDepth);
 	}
 
 	// Reshape first cube
-	high = newHigh;
-	reshape();
+	rawHigh = newRawHigh;
 	fit();
 
+	Cube* newCube = new Cube(true);
+	newCube->mesh = mesh;
+	newCube->faces = outsideFaces();
+	newCube->fitFaces();
+	newCube->box.setColor(Eigen::Vector4f(1, 0, 0, 0.5));
+}
 
+vector<Tucano::Face*> Cube::outsideFaces() {
+	vector<Tucano::Face*> outside = vector<Tucano::Face*>();
+	vector<Tucano::Face*> inside = vector<Tucano::Face*>();
+	for (auto i = faces.begin(); i != faces.end(); i++) {
+		if (!hasFace(**i)) {
+			outside.push_back(*i);
+		}
+		else {
+			inside.push_back(*i);
+		}
+	}
+	faces = inside;
+	return outside;
 }

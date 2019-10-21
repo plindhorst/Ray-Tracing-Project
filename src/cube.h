@@ -13,6 +13,14 @@ public:
 	static std::vector<Cube*> cubes;
 
 protected:
+	// Raw Coördinates (Object Space)
+	Eigen::Vector3f rawLow;
+	Eigen::Vector3f rawHigh;
+	Eigen::Vector3f rawShape;
+	float rawWidth;
+	float rawHeight;
+	float rawDepth;
+	// Processed Coördinates (World Space)
 	Eigen::Vector3f low = Eigen::Vector3f(-0.5, -0.5, -0.5);
 	Eigen::Vector3f high = Eigen::Vector3f(0.5, 0.5, 0.5);
 	Eigen::Vector3f shape = high - low;
@@ -33,19 +41,14 @@ public:
 	//	If remember, stores pointer to cube, will be deconstructed with class deconstructor.
 	Cube(bool remember);
 
-	//	Same but also fits to low & high coördinates.
-	Cube(Eigen::Vector3f low, Eigen::Vector3f high, bool remember);
-
 	// 	Delete all cubes that have been remembered.
 	static void deconstruct();
 
 	//	Render this cube using Tucano's box shape.
 	void render(const Tucano::Camera& flycamera, const Tucano::Camera& scene_light);
 
-	//	Sets ModelMatrix so the Cube fits its low & high coördinates.
+	//	Sets ModelMatrix so the Cube fits its raw low & high coördinates.
 	void fit();
-	// Sets ModelMatrix so the Cube fits these low & high coördinates.
-	void fit(Eigen::Vector3f low, Eigen::Vector3f high);
 
 	//	Renew shape variables given low & high variables.
 	void reshape();
@@ -61,6 +64,9 @@ public:
 
 	// 	Fits Cube to contain all it's faces.
 	void fitFaces();
+
+	//	Returns the faces that are outside the cube, and removes them from the list of faces that should be inside.
+	vector<Tucano::Face*> outsideFaces();
 
 	//	Split this box along longest axis, and create a new cube to cover all lost faces.
 	void splitcube();
