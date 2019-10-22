@@ -16,6 +16,7 @@ void Cube::deconstruct() {
 }
 
 void Cube::render(const Tucano::Camera& flycamera, const Tucano::Camera& scene_light) {
+	if (faces.size() <= 0) { return; }
 	box.render(flycamera, scene_light);
 }
 
@@ -110,7 +111,22 @@ void Cube::fitFaces() {
 	fit();
 }
 
-void Cube::splitcube() {
+vector<Tucano::Face*> Cube::outsideFaces() {
+	vector<Tucano::Face*> outside = vector<Tucano::Face*>();
+	vector<Tucano::Face*> inside = vector<Tucano::Face*>();
+	for (auto i = faces.begin(); i != faces.end(); i++) {
+		if (!hasFace(**i)) {
+			outside.push_back(*i);
+		}
+		else {
+			inside.push_back(*i);
+		}
+	}
+	faces = inside;
+	return outside;
+}
+
+Cube& Cube::splitcube() {
 	Eigen::Vector3f newRawHigh;
 
 	if (width >= height && width >= depth) {
@@ -128,26 +144,23 @@ void Cube::splitcube() {
 
 	// Reshape first cube
 	rawHigh = newRawHigh;
-	fit();
+	reshape();
 
 	Cube* newCube = new Cube(true);
 	newCube->mesh = mesh;
 	newCube->faces = outsideFaces();
 	newCube->fitFaces();
 	newCube->box.setColor(Eigen::Vector4f(1, 0, 0, 0.5));
+	fitFaces();
+	return *newCube;
 }
 
-vector<Tucano::Face*> Cube::outsideFaces() {
-	vector<Tucano::Face*> outside = vector<Tucano::Face*>();
-	vector<Tucano::Face*> inside = vector<Tucano::Face*>();
-	for (auto i = faces.begin(); i != faces.end(); i++) {
-		if (!hasFace(**i)) {
-			outside.push_back(*i);
-		}
-		else {
-			inside.push_back(*i);
-		}
-	}
-	faces = inside;
-	return outside;
+Eigen::Vector4f Cube::setRandomColor() {
+	Eigen::Vector4f color = Eigen::Vector4f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, 1);
+	box.setColor(color);
+	return color;
+}
+
+int Cube::getNumberOfFaces() {
+	return faces.size();
 }

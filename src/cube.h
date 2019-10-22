@@ -69,6 +69,9 @@ public:
 	vector<Tucano::Face*> outsideFaces();
 
 	//	Split this box along longest axis, and create a new cube to cover all lost faces.
-	void splitcube();
+	Cube& splitcube();
 
+	Eigen::Vector4f setRandomColor();
+
+	int getNumberOfFaces();
 };
