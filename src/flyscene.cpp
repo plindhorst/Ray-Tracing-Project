@@ -175,7 +175,8 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance != FLT_MAX) {
-		color = calculateColor(minimum_distance, minimum_face, origin, dest);
+		//color = calculateColor(minimum_distance, minimum_face, origin, dest);
+		color = Eigen::Vector3f(0.4, 0, 0);
 	}
 	else {
 		color = Eigen::Vector3f(0.9, 0.9, 0.9);
@@ -186,29 +187,34 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 float Flyscene::intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
 	//get vertices and normals of the face
 
-	Eigen::Vector3f vert0 = mesh.getVertex(face.vertex_ids[0]).head<3>();
-	Eigen::Vector3f vert1 = mesh.getVertex(face.vertex_ids[1]).head<3>();
-	Eigen::Vector3f vert2 = mesh.getVertex(face.vertex_ids[2]).head<3>();
+	Eigen::Vector4f vec0 = mesh.getVertex(face.vertex_ids[0]);
+	Eigen::Vector4f vec1 = mesh.getVertex(face.vertex_ids[1]);
+	Eigen::Vector4f vec2 = mesh.getVertex(face.vertex_ids[2]);
+
+	Eigen::Vector3f vert0 = vec0.head<3>() / vec0.w();
+	Eigen::Vector3f vert1 = vec1.head<3>() / vec1.w();
+	Eigen::Vector3f vert2 = vec2.head<3>() / vec2.w();
 
 
 	//get Normal of the face
-	Eigen::Vector3f facenormal = face.normal.normalized();
+	Eigen::Vector3f facenormal = face.normal;
 
 	//Return false if triangle and direction of ray are the same
 	if (facenormal.dot(dest) == 0) {
 		return (float)-1;
 	}
-	float distancePlane = facenormal.dot(vert0);
+	//Calculate the distance between the plane and the origin (not the camera)
+	float distancePlane = facenormal.dot(vert0.normalized());
 	//Ray = origin + t*distance
 
-	float t = (facenormal.dot(origin) + distancePlane) / (facenormal.dot(dest));
+	float t = (distancePlane - origin.dot(facenormal)) / dest.dot(facenormal);
 	Eigen::Vector3f PointP = origin + t * dest;
-	
+
 	//Inside-out test
 	Eigen::Vector3f edge0 = vert1 - vert0;
 	Eigen::Vector3f edge1 = vert2 - vert1;
 	Eigen::Vector3f edge2 = vert0 - vert2;
-	
+
 	Eigen::Vector3f Inner0 = PointP - vert0;
 	Eigen::Vector3f Inner1 = PointP - vert1;
 	Eigen::Vector3f Inner2 = PointP - vert2;
@@ -216,15 +222,21 @@ float Flyscene::intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& des
 	float area0 = facenormal.dot(edge0.cross(Inner0));
 	float area1 = facenormal.dot(edge1.cross(Inner1));
 	float area2 = facenormal.dot(edge2.cross(Inner2));
-	
+
 	//If any area is smaller or equal to zero, point is on the wrong side of the edge. 
-	if (area0 >= 0 && area1 >= 0 && area2 >= 0) {
-		Eigen::Vector3f distanceVector = t * dest;
-		float distance = ::sqrtf(distanceVector.x() * distanceVector.x() + distanceVector.y() * distanceVector.y() + distanceVector.z() * distanceVector.z());
-		return distance;
+	if (area0 < 0 || area0 > 1) {
+		return (float)-1;
+	}
+	if (area1 < 0 || area1 > 1) {
+		return (float)-1;
+	}
+	if (area2 < 0 || area2 > 1) {
+		return (float)-1;
 	}
 	else {
-		return (float)-1;
+		Eigen::Vector3f distanceVector = t * dest;
+		float distance = ::sqrtf(distanceVector.dot(distanceVector));
+		return distance;
 	}
 }
 
