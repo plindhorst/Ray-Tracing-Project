@@ -165,7 +165,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 	// Loop through all faces, calculate the distance and update the minimum_face whenever necessary
 	for (int i = 0; i < mesh.getNumberOfFaces(); i++) {
 		current_face = mesh.getFace(i);
-		current_distance = intersectsDistance(origin, dest, current_face);
+		current_distance = calculateDistance(origin, dest, current_face);
 		if (0 <= current_distance && current_distance < minimum_distance) {
 			minimum_distance = current_distance;
 			minimum_face = current_face;
@@ -184,7 +184,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 	return color;
 }
 
-float Flyscene::intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
+float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
 	//get vertices and normals of the face
 
 	Eigen::Vector4f vec0 = mesh.getVertex(face.vertex_ids[0]);
@@ -238,11 +238,6 @@ float Flyscene::intersectsDistance(Eigen::Vector3f& origin, Eigen::Vector3f& des
 		float distance = ::sqrtf(distanceVector.dot(distanceVector));
 		return distance;
 	}
-}
-
-float Flyscene::calculateDistance(Eigen::Vector3f& origin, Tucano::Face face) {
-	// TO DO: Implement distance calculation
-	return 0;
 }
 
 Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest) {
