@@ -1,6 +1,8 @@
 #ifndef __FLYSCENE__
 #define __FLYSCENE__
 
+#include "cube.h"
+
 // Must be included before glfw.
 #include <GL/glew.h>
 
@@ -11,6 +13,7 @@
 #include <tucano/shapes/camerarep.hpp>
 #include <tucano/shapes/cylinder.hpp>
 #include <tucano/shapes/sphere.hpp>
+#include <tucano/shapes/box.hpp>
 #include <tucano/utils/flycamera.hpp>
 #include <tucano/utils/imageIO.hpp>
 #include <tucano/utils/mtlIO.hpp>
@@ -100,6 +103,15 @@ private:
 
   /// MTL materials
   vector<Tucano::Material::Mtl> materials;
+
+  // SELFMADE
+
+  void generateBoxes();
+
+  void renderBoxes();
+
+public:
+  ~Flyscene();
 };
 
 #endif // FLYSCENE
