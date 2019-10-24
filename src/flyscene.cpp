@@ -175,8 +175,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance != FLT_MAX) {
-		//color = calculateColor(minimum_distance, minimum_face, origin, dest);
-		color = Eigen::Vector3f(0.4, 0, 0);
+		color = calculateColor(minimum_distance, minimum_face, origin, dest);
 	}
 	else {
 		color = Eigen::Vector3f(0.9, 0.9, 0.9);
@@ -186,14 +185,16 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 
 float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
 	//get vertices and normals of the face
+	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 
 	Eigen::Vector4f vec0 = mesh.getVertex(face.vertex_ids[0]);
 	Eigen::Vector4f vec1 = mesh.getVertex(face.vertex_ids[1]);
 	Eigen::Vector4f vec2 = mesh.getVertex(face.vertex_ids[2]);
 
-	Eigen::Vector3f vert0 = vec0.head<3>() / vec0.w();
-	Eigen::Vector3f vert1 = vec1.head<3>() / vec1.w();
-	Eigen::Vector3f vert2 = vec2.head<3>() / vec2.w();
+	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>()/vec0.w());
+	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>()/vec1.w());
+	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>()/vec2.w());
+
 
 
 	//get Normal of the face
@@ -204,10 +205,11 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 		return (float)-1;
 	}
 	//Calculate the distance between the plane and the origin (not the camera)
-	float distancePlane = facenormal.dot(vert0.normalized());
+	float distancePlane = facenormal.dot(vert0.hnormalized());
 	//Ray = origin + t*distance
 
-	float t = (distancePlane - origin.dot(facenormal)) / dest.dot(facenormal);
+	float orthProjectionDest = distancePlane - origin.dot(facenormal);
+	float t = orthProjectionDest / (dest.dot(facenormal));
 	Eigen::Vector3f PointP = origin + t * dest;
 
 	//Inside-out test
@@ -224,18 +226,12 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 	float area2 = facenormal.dot(edge2.cross(Inner2));
 
 	//If any area is smaller or equal to zero, point is on the wrong side of the edge. 
-	if (area0 < 0 || area0 > 1) {
-		return (float)-1;
-	}
-	if (area1 < 0 || area1 > 1) {
-		return (float)-1;
-	}
-	if (area2 < 0 || area2 > 1) {
+	if (area0 < 0 || area1 < 0 || area2 < 0) {
 		return (float)-1;
 	}
 	else {
-		Eigen::Vector3f distanceVector = t * dest;
-		float distance = ::sqrtf(distanceVector.dot(distanceVector));
+		Eigen::Vector3f distVector = t * dest;
+		float distance = ::sqrtf(distVector.x()*distVector.x() + distVector.y()*distVector.y() + distVector.z()*distVector.z());
 		return distance;
 	}
 }
