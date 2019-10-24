@@ -158,3 +158,35 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin,
 	return Eigen::Vector3f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX,
 		rand() / (float)RAND_MAX);
 }
+
+void Flyscene::generateBoxes() {
+	int minimumFacesPerBoundingBox = 300;
+	Cube* cube = new Cube(true);
+	cube->fitMesh(mesh);
+
+	bool notDone = true;
+	while (notDone) {
+		notDone = false;
+		vector<Cube*> current = Cube::cubes;
+		for (Cube* c : current) {
+			if (c->getNumberOfFaces() > minimumFacesPerBoundingBox) {
+				c->splitcube();
+				notDone = true;
+			}
+		}
+	}
+
+	for (Cube* c : Cube::cubes) {
+		c->setRandomColor();
+	}
+}
+
+void Flyscene::renderBoxes() {
+	for (Cube* cube : Cube::cubes) {
+		cube->render(flycamera, scene_light);
+	}
+}
+
+Flyscene::~Flyscene() {
+	Cube::deconstruct();
+}
