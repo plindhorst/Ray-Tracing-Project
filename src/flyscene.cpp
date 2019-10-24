@@ -118,6 +118,10 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 	// place the camera representation (frustum) on current camera location, 
 	camerarep.resetModelMatrix();
 	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
+
+	Eigen::Vector3f origin = flycamera.getCenter();
+	Eigen::Vector3f debugColor = traceRay(origin, dir);
+	std::cout << "Debug Ray Color: " << debugColor.transpose() << std::endl;
 }
 
 void Flyscene::raytraceScene(int width, int height) {
@@ -205,7 +209,7 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 		return (float)-1;
 	}
 	//Calculate the distance between the plane and the origin (not the camera)
-	float distancePlane = facenormal.dot(vert0.hnormalized());
+	float distancePlane = facenormal.dot(vert0.normalized());
 	//Ray = origin + t*distance
 
 	float orthProjectionDest = distancePlane - origin.dot(facenormal);
