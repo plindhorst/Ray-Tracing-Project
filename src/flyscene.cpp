@@ -23,15 +23,13 @@ void Flyscene::initialize(int width, int height) {
 	for (int i = 0; i < materials.size(); ++i)
 		phong.addMaterial(materials[i]);
 
-
-
 	// set the color and size of the sphere to represent the light sources
 	// same sphere is used for all sources
 	lightrep.setColor(Eigen::Vector4f(1.0, 1.0, 0.0, 1.0));
 	lightrep.setSize(0.15);
 
 	// create a first ray-tracing light source at some random position
-	lights.push_back(Eigen::Vector3f(-1.0, 1.0, 1.0));
+	lights.push_back(Eigen::Vector3f(-0.5, 2.0, 3.0));
 
 	// scale the camera representation (frustum) for the ray debug
 	camerarep.shapeMatrix()->scale(0.2);
@@ -118,10 +116,6 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 	// place the camera representation (frustum) on current camera location, 
 	camerarep.resetModelMatrix();
 	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
-
-	Eigen::Vector3f origin = flycamera.getCenter();
-	Eigen::Vector3f debugColor = traceRay(origin, dir);
-	std::cout << "Debug Ray Color: " << debugColor.transpose() << std::endl;
 }
 
 void Flyscene::raytraceScene(int width, int height) {
@@ -149,7 +143,7 @@ void Flyscene::raytraceScene(int width, int height) {
 			// create a ray from the camera passing through the pixel (i,j)
 			screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
 			// launch raytracing for the given ray and write result to pixel data
-			pixel_data[i][j] = traceRay(origin, screen_coords);
+			pixel_data[j][i] = traceRay(origin, screen_coords);
 		}
 	}
 
@@ -187,6 +181,38 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 	return color;
 }
 
+void Flyscene::generateBoxes() {
+	int minimumFacesPerBoundingBox = 300;
+	Cube* cube = new Cube(true);
+	cube->fitMesh(mesh);
+
+	bool notDone = true;
+	while (notDone) {
+		notDone = false;
+		vector<Cube*> current = Cube::cubes;
+		for (Cube* c : current) {
+			if (c->getNumberOfFaces() > minimumFacesPerBoundingBox) {
+				c->splitcube();
+				notDone = true;
+			}
+		}
+	}
+
+	for (Cube* c : Cube::cubes) {
+		c->setRandomColor();
+	}
+}
+
+void Flyscene::renderBoxes() {
+	for (Cube* cube : Cube::cubes) {
+		cube->render(flycamera, scene_light);
+	}
+}
+
+Flyscene::~Flyscene() {
+	Cube::deconstruct();
+}
+
 float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
 	//get vertices and normals of the face
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
@@ -202,14 +228,14 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 
 
 	//get Normal of the face
-	Eigen::Vector3f facenormal = face.normal;
+	Eigen::Vector3f facenormal = face.normal.normalized();
 
 	//Return false if triangle and direction of ray are the same
 	if (facenormal.dot(dest) == 0) {
 		return (float)-1;
 	}
 	//Calculate the distance between the plane and the origin (not the camera)
-	float distancePlane = facenormal.dot(vert0.normalized());
+	float distancePlane = facenormal.dot(vert0);
 	//Ray = origin + t*distance
 
 	float orthProjectionDest = distancePlane - origin.dot(facenormal);
@@ -217,26 +243,20 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 	Eigen::Vector3f PointP = origin + t * dest;
 
 	//Inside-out test
-	Eigen::Vector3f edge0 = vert1 - vert0;
-	Eigen::Vector3f edge1 = vert2 - vert1;
-	Eigen::Vector3f edge2 = vert0 - vert2;
+	Eigen::Vector3f v0 = (vert0 - vert2).normalized();
+	Eigen::Vector3f v1 = (vert1 - vert2).normalized();
 
-	Eigen::Vector3f Inner0 = PointP - vert0;
-	Eigen::Vector3f Inner1 = PointP - vert1;
-	Eigen::Vector3f Inner2 = PointP - vert2;
-
-	float area0 = facenormal.dot(edge0.cross(Inner0));
-	float area1 = facenormal.dot(edge1.cross(Inner1));
-	float area2 = facenormal.dot(edge2.cross(Inner2));
-
+	float Pv0 = PointP.dot(v0);
+	float Pv1 = PointP.dot(v1);
+	
 	//If any area is smaller or equal to zero, point is on the wrong side of the edge. 
-	if (area0 < 0 || area1 < 0 || area2 < 0) {
-		return (float)-1;
+	if (Pv0 > 0 && Pv1 >0 && (Pv0+Pv1)<=1) {
+		Eigen::Vector3f distVector = t * dest;
+		float distance = ::sqrtf(distVector.x() * distVector.x() + distVector.y() * distVector.y() + distVector.z() * distVector.z());
+		return distance;
 	}
 	else {
-		Eigen::Vector3f distVector = t * dest;
-		float distance = ::sqrtf(distVector.x()*distVector.x() + distVector.y()*distVector.y() + distVector.z()*distVector.z());
-		return distance;
+		return (float)-1;
 	}
 }
 
