@@ -261,9 +261,9 @@ Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face mi
 
 	Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
 
-	Eigen::Vector3f ambient = light_intensity.cross(ka);
-	Eigen::Vector3f diffuse = light_intensity.cross(kd) * std::max(lightDirection.dot(normal), 0.f);
-	Eigen::Vector3f specular = light_intensity.cross(ks) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);
+	Eigen::Vector3f ambient = Eigen::Vector3f(light_intensity.x() * ka.x(), light_intensity.y() * ka.y(), light_intensity.z() * ka.z());
+	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * ks.x(), light_intensity.y() * ks.y(), light_intensity.z() * ks.z()) * std::max(lightDirection.dot(normal), 0.f);
+	Eigen::Vector3f specular = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);
 
 	Eigen::Vector3f color = ambient + diffuse + specular;
 	return color;
