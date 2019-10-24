@@ -11,7 +11,7 @@ void Flyscene::initialize(int width, int height) {
 
   // load the OBJ file and materials
   Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/dodgeColorTest.obj");
+                                    "resources/models/cube.obj");
 
 
   // normalize the model (scale to unit cube and center at origin)
@@ -161,15 +161,17 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f &origin,
                          rand() / (float)RAND_MAX);
 }
 
-bool Flyscene::intersection(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face) {
-	return true;
+float Flyscene::intersection(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face) {
+	return -1;
 }
 
-bool Flyscene::shadow(Eigen::Vector3f& dest, Eigen::Vector3f& light) {
+//Call function in calculate color, if it returns true => pixel should be black/ambiant. If it returns false => the pixel should have a color.
+bool Flyscene::shadow(Eigen::Vector3f& loc, Eigen::Vector3f& lightLoc) {
+	Eigen::Vector3f lightDirection = loc - lightLoc;
 	Tucano::Face current_face;
 	for (int i = 0; i < Flyscene::mesh.getNumberOfFaces; i++) {
 		current_face = mesh.getFace(i);
-		if (intersection(light, dest, current_face)) {
+		if (intersection(loc, lightDirection, current_face) != -1) {
 			return true;
 		}
 	}

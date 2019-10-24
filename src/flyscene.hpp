@@ -77,7 +77,7 @@ public:
   /**
   *From ray-intersect
   */
-  bool intersection(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face);
+  float intersection(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face);
 
 private:
   // A simple phong shader for rendering meshes
