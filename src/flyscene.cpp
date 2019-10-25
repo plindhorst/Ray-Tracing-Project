@@ -137,6 +137,12 @@ void Flyscene::raytraceScene(int width, int height) {
   Eigen::Vector3f origin = flycamera.getCenter();
   Eigen::Vector3f screen_coords;
 
+  // create spherical lights out of point lights
+  vector<Eigen::Vector3f> lightsDup = lights;
+  for (int i = 0; i < lightsDup.size; i++) {
+	  sphericalLight(lightsDup[i]);
+  }
+
   // for every pixel shoot a ray from the origin through the pixel coords
   for (int j = 0; j < image_size[1]; ++j) {
     for (int i = 0; i < image_size[0]; ++i) {
@@ -176,4 +182,14 @@ bool Flyscene::shadow(Eigen::Vector3f& loc, Eigen::Vector3f& lightLoc) {
 		}
 	}
 	return false;
+}
+
+//Call function in rayTraceScene before pixel loop
+void Flyscene::sphericalLight(Eigen::Vector3f& lightLoc, float radius = 0.15, int nLightpoints = 15) {
+	for (int i = 0; i < nLightpoints; i++) {
+		float x = (-radius + (rand() / (RAND_MAX / (radius * 2))));
+		float y = (-radius + (rand() / (RAND_MAX / (radius * 2))));
+		float z = (-radius + (rand() / (RAND_MAX / (radius * 2))));
+		lights.push_back(Eigen::Vector3f(lightLoc.x + x, lightLoc.y + y, lightLoc.z + z));
+	}
 }

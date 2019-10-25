@@ -79,6 +79,8 @@ public:
   */
   float intersection(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face);
 
+  void sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLightpoints);
+
 private:
   // A simple phong shader for rendering meshes
   Tucano::Effects::PhongMaterial phong;
