@@ -81,7 +81,9 @@ public:
 
   void sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLightpoints);
 
-  Eigen::Vector3f calcColor(float minimum_distance, Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP);
+  Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP);
+
+  Eigen::Vector3f calcColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest, Eigen::Vector3f& pointP);
 
 private:
   // A simple phong shader for rendering meshes
