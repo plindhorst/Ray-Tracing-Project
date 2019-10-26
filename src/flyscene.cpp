@@ -261,7 +261,7 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 		return (float)-1;
 	}
 	else {
-		return (t*dir).norm();
+		return t;
 	}
 }
 
