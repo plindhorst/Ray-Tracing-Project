@@ -141,7 +141,7 @@ void Flyscene::raytraceScene(int width, int height) {
 	for (int j = 0; j < image_size[1]; ++j) {
 		for (int i = 0; i < image_size[0]; ++i) {
 			// create a ray from the camera passing through the pixel (i,j)
-			screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin;
+			screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
 			// launch raytracing for the given ray and write result to pixel data
 			pixel_data[j][i] = traceRay(origin, screen_coords);
 		}
@@ -229,9 +229,10 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 
 	//get Normal of the face
 	Eigen::Vector3f facenormal = face.normal.normalized();
+	Eigen::Vector3f dir = dest - origin;
 
 	//Return false if triangle and direction of ray are the same
-	if (facenormal.dot(dest) == 0) {
+	if (facenormal.dot(dir) == 0) {
 		return (float)-1;
 	}
 	//Calculate the distance between the plane and the origin (not the camera)
@@ -239,8 +240,8 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 	//Ray = origin + t*distance
 
 	float orthProjectionDest = distancePlane - origin.dot(facenormal);
-	float t = orthProjectionDest / (dest.dot(facenormal));
-	Eigen::Vector3f PointP = origin + t * dest;
+	float t = orthProjectionDest / (dir.dot(facenormal));
+	Eigen::Vector3f PointP = origin + t * dir;
 
 	//Inside-out test
 	Eigen::Vector3f edge0 = vert1 - vert0;
@@ -260,9 +261,7 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 		return (float)-1;
 	}
 	else {
-		Eigen::Vector3f distVector = t * dest;
-		float distance = distVector.x() * distVector.x() + distVector.y() * distVector.y() + distVector.z() * distVector.z();
-		return sqrtf(distance);
+		return (t*dir).norm();
 	}
 }
 
