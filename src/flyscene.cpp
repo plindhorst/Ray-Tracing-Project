@@ -190,6 +190,36 @@ void Flyscene::sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLigh
 		float x = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float y = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float z = (-radius + (rand() / (RAND_MAX / (radius * 2))));
-		lights.push_back(Eigen::Vector3f(lightLoc(0) + x, lightLoc(1) + y, lightLoc(2) + z));
+		lights.push_back(Eigen::Vector3f(lightLoc.x() + x, lightLoc.y() + y, lightLoc.z() + z));
 	}
+}
+
+
+//Call function in traceRay
+Eigen::Vector3f Flyscene::calcColor(float minimum_distance, Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP) {
+	
+	if (shadow(pointP, lightLoc)) {
+		return Eigen::Vector3f(0.0, 0.0, 0.0);
+	}
+
+	Tucano::Material::Mtl material = materials[minimum_face.material_id];
+	Eigen::Vector3f ka = material.getAmbient();
+	Eigen::Vector3f kd = material.getDiffuse();
+	Eigen::Vector3f ks = material.getSpecular();
+	float shininess = material.getShininess();
+	float refraction_index = material.getOpticalDensity();
+	float transparency = material.getDissolveFactor();
+
+	Eigen::Vector3f normal = minimum_face.normal.normalized();
+	Eigen::Vector3f lightDirection = (pointP - lightLoc).normalized();
+	Eigen::Vector3f lightReflection = (lightDirection - 2 * (normal.dot(lightDirection)) * normal).normalized();
+	Eigen::Vector3f eyeDirection = (origin - pointP).normalized();
+	Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
+	
+	Eigen::Vector3f ambient = Eigen::Vector3f(light_intensity.x() * ka.x(), light_intensity.y() * ka.y(), light_intensity.z() * ka.z());
+	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * ks.x(), light_intensity.y() * ks.y(), light_intensity.z() * ks.z()) * std::max(lightDirection.dot(normal), 0.f);
+	Eigen::Vector3f specular = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);
+
+	Eigen::Vector3f color = ambient + diffuse + specular;
+	return color;
 }
