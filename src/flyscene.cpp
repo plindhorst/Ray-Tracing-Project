@@ -53,8 +53,7 @@ void Flyscene::initialize(int width, int height) {
 	//   std::cout<<"face   normal "<<face.normal.transpose() << std::endl << std::endl;
 	// }
 
-
-	generateBoxes();
+	generateBoundingBoxes();
 }
 
 void Flyscene::paintGL(void) {
@@ -88,7 +87,7 @@ void Flyscene::paintGL(void) {
 	// render coordinate system at lower right corner
 	flycamera.renderAtCorner();
 
-	renderBoxes();
+	renderBoundingBoxes();
 }
 
 void Flyscene::simulate(GLFWwindow* window) {
@@ -163,34 +162,33 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin,
 		rand() / (float)RAND_MAX);
 }
 
-void Flyscene::generateBoxes() {
-	int minimumFacesPerBoundingBox = 300;
-	Cube* cube = new Cube(true);
-	cube->fitMesh(mesh);
+void Flyscene::generateBoundingBoxes() {
+	BoundingBox* box = new BoundingBox(true);
+	box->fitMesh(mesh);
 
 	bool notDone = true;
 	while (notDone) {
 		notDone = false;
-		vector<Cube*> current = Cube::cubes;
-		for (Cube* c : current) {
-			if (c->getNumberOfFaces() > minimumFacesPerBoundingBox) {
-				c->splitcube();
+		vector<BoundingBox*> current = BoundingBox::boxes;
+		for (BoundingBox* box : current) {
+			if (box->getNumberOfFaces() > MIN_FACES) {
+				box->splitBox();
 				notDone = true;
 			}
 		}
 	}
 
-	for (Cube* c : Cube::cubes) {
+	for (BoundingBox* c : BoundingBox::boxes) {
 		c->setRandomColor();
 	}
 }
 
-void Flyscene::renderBoxes() {
-	for (Cube* cube : Cube::cubes) {
-		cube->render(flycamera, scene_light);
+void Flyscene::renderBoundingBoxes() {
+	if (!RENDER_BOUNDING) {
+		return;
 	}
 }
 
 Flyscene::~Flyscene() {
-	Cube::deconstruct();
+	BoundingBox::deconstruct();
 }

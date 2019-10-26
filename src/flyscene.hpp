@@ -1,7 +1,7 @@
 #ifndef __FLYSCENE__
 #define __FLYSCENE__
 
-#include "cube.h"
+#include "BoundingBox.h"
 
 // Must be included before glfw.
 #include <GL/glew.h>
@@ -106,11 +106,13 @@ private:
 
   // SELFMADE
 
-  void generateBoxes();
-
-  void renderBoxes();
+  void generateBoundingBoxes();
+  void renderBoundingBoxes();
 
 public:
+  static const bool RENDER_BOUNDING = true;
+  static const int MIN_FACES = 300;
+
   ~Flyscene();
 };
 
