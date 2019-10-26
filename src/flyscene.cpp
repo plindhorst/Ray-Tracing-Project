@@ -196,7 +196,7 @@ void Flyscene::sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLigh
 
 
 //Call function in calcColor
-Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP) {
+Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP) {
 	
 	if (shadow(pointP, lightLoc)) {
 		return Eigen::Vector3f(0.0, 0.0, 0.0);
@@ -225,10 +225,10 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 }
 
 //Call function in traceRay
-Eigen::Vector3f Flyscene::calcColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest, Eigen::Vector3f& pointP) {
+Eigen::Vector3f Flyscene::calcColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP) {
 	Eigen::Vector3f sumColor = Eigen::Vector3f(0.0, 0.0, 0.0);
 	for (int i = 0; i < lights.size(); i++) {
-		sumColor = sumColor + calcSingleColor(minimum_face, origin, dest, lights[i], pointP);
+		sumColor = sumColor + calcSingleColor(minimum_face, origin, lights[i], pointP);
 	}
 	return sumColor / lights.size();
 }
