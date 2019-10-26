@@ -139,8 +139,8 @@ void Flyscene::raytraceScene(int width, int height) {
 
   // create spherical lights out of point lights
   vector<Eigen::Vector3f> lightsDup = lights;
-  for (int i = 0; i < lightsDup.size; i++) {
-	  sphericalLight(lightsDup[i]);
+  for (int i = 0; i < lightsDup.size(); i++) {
+	  sphericalLight(lightsDup[i], 0.15, 15);
   }
 
   // for every pixel shoot a ray from the origin through the pixel coords
@@ -175,7 +175,7 @@ float Flyscene::intersection(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tuc
 bool Flyscene::shadow(Eigen::Vector3f& loc, Eigen::Vector3f& lightLoc) {
 	Eigen::Vector3f lightDirection = loc - lightLoc;
 	Tucano::Face current_face;
-	for (int i = 0; i < Flyscene::mesh.getNumberOfFaces; i++) {
+	for (int i = 0; i < Flyscene::mesh.getNumberOfFaces(); i++) {
 		current_face = mesh.getFace(i);
 		if (intersection(loc, lightDirection, current_face) != -1) {
 			return true;
@@ -185,11 +185,11 @@ bool Flyscene::shadow(Eigen::Vector3f& loc, Eigen::Vector3f& lightLoc) {
 }
 
 //Call function in rayTraceScene before pixel loop
-void Flyscene::sphericalLight(Eigen::Vector3f& lightLoc, float radius = 0.15, int nLightpoints = 15) {
+void Flyscene::sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLightpoints) {
 	for (int i = 0; i < nLightpoints; i++) {
 		float x = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float y = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float z = (-radius + (rand() / (RAND_MAX / (radius * 2))));
-		lights.push_back(Eigen::Vector3f(lightLoc.x + x, lightLoc.y + y, lightLoc.z + z));
+		lights.push_back(Eigen::Vector3f(lightLoc(0) + x, lightLoc(1) + y, lightLoc(2) + z));
 	}
 }
