@@ -178,14 +178,20 @@ void Flyscene::generateBoundingBoxes() {
 		}
 	}
 
-	for (BoundingBox* c : BoundingBox::boxes) {
-		c->setRandomColor();
+	std::cout << "Boxes: " << BoundingBox::boxes.size() << std::endl;
+
+	for (BoundingBox* box : BoundingBox::boxes) {
+		box->setRandomColor();
+		if (RENDER_BOUNDING) box->generateShape();
 	}
 }
 
 void Flyscene::renderBoundingBoxes() {
 	if (!RENDER_BOUNDING) {
 		return;
+	}
+	for (BoundingBox* boundingBox : BoundingBox::boxes) {
+		boundingBox->render(flycamera, scene_light);
 	}
 }
 

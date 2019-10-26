@@ -110,7 +110,7 @@ private:
   void renderBoundingBoxes();
 
 public:
-  static const bool RENDER_BOUNDING = true;
+  static const bool RENDER_BOUNDING = false;
   static const int MIN_FACES = 300;
 
   ~Flyscene();

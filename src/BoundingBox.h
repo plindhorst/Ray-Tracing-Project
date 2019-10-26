@@ -20,6 +20,7 @@ class BoundingBox
 	float height;
 	float depth;
 	Eigen::Vector3f color = Eigen::Vector3f(1,1,1);
+	Tucano::Shapes::Box box;
 	// The mesh this cube belongs to.
 	Tucano::Mesh* mesh;
 	// All faces that should be inside this cube.
@@ -57,4 +58,8 @@ class BoundingBox
 	void setRandomColor();
 
 	int getNumberOfFaces();
+
+	void generateShape();
+
+	void render(Tucano::Flycamera& flyCamera, Tucano::Camera& scene_light);
 };

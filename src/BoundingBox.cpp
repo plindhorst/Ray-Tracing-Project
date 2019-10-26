@@ -102,21 +102,20 @@ vector<Tucano::Face*> BoundingBox::outsideFaces() {
 }
 
 BoundingBox& BoundingBox::splitBox() {
-	Eigen::Vector3f newHigh;
-
 	if (width >= height && width >= depth) {
-		high(0) = averageVertexCoord(0);
+		//high(0) = averageVertexCoord(0);
+		high(0) = high(0) - width / 2;
 	}
 	else if (height >= width && height >= depth) {
-		high(1) = averageVertexCoord(1);
+		//high(1) = averageVertexCoord(1);
+		high(1) = high(1) - height / 2;
 	}
 	else {
-		high(2) = averageVertexCoord(2);
+		//high(2) = averageVertexCoord(2);
+		high(2) = high(2) - depth / 2;
 	}
 
-	// Reshape first cube
 	reshape();
-
 	BoundingBox* newCube = new BoundingBox(true);
 	newCube->mesh = mesh;
 	newCube->faces = outsideFaces();
@@ -130,14 +129,33 @@ float BoundingBox::averageVertexCoord(int axis) {
 	for (int i = 0; i < mesh->getNumberOfVertices(); i++) {
 		average += mesh->getVertex(i)(axis);
 	}
-	average /= mesh->getNumberOfVertices;
+	average /= mesh->getNumberOfVertices();
 	return average;
 }
 
 void BoundingBox::setRandomColor() {
-	color = Eigen::Vector4f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX);
+	color = Eigen::Vector3f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX);
 }
 
 int BoundingBox::getNumberOfFaces() {
 	return faces.size();
+}
+
+void BoundingBox::generateShape() {
+	box = Tucano::Shapes::Box();
+	Eigen::Affine3f modelMatrix = Eigen::Affine3f::Identity();
+	Eigen::Affine3f meshMatrix = mesh->getShapeModelMatrix();
+	Eigen::Vector3f tempLow = meshMatrix * low;
+	Eigen::Vector3f tempHigh = meshMatrix * high;
+	modelMatrix.translate(tempLow + 0.5 * (meshMatrix * high - meshMatrix * low));
+	modelMatrix(0, 0) = tempHigh(0) - tempLow(0);
+	modelMatrix(1, 1) = tempHigh(1) - tempLow(1);
+	modelMatrix(2, 2) = tempHigh(2) - tempLow(2);
+	box.setModelMatrix(modelMatrix);
+	box.setColor(Eigen::Vector4f(color(0), color(1), color(2), 1));
+}
+
+void BoundingBox::render(Tucano::Flycamera& flyCamera, Tucano::Camera& scene_light) {
+	if (faces.size() <= 0) { return; }
+	box.render(flyCamera, scene_light);
 }
