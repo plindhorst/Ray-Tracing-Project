@@ -72,11 +72,11 @@ public:
 	 */
 	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir);
 
-  // TO DO: insert documentation
-  float calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
+	// TO DO: insert documentation
+	float calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
 
-  // TO DO: insert documentation
-  Eigen::Vector3f calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir);
+	// TO DO: insert documentation
+	Eigen::Vector3f calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir);
 
 private:
 	// A simple phong shader for rendering meshes
@@ -107,26 +107,34 @@ private:
 	// Scene meshes
 	Tucano::Mesh mesh;
 
-  /// MTL materials
-  vector<Tucano::Material::Mtl> materials;
+	/// MTL materials
+	vector<Tucano::Material::Mtl> materials;
 
-  // SELFMADE
+	// SELFMADE
 
-  void generateBoundingBoxes();
-  void renderBoundingBoxes();
+	void generateBoundingBoxes();
+	void renderBoundingBoxes();
 
-  bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
+	bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
 
 public:
-  static const bool RENDER_BOUNDINGBOXES = true;
-  static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
-  static const int MIN_FACES = 3000;
-  const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
-  const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);
+	static const bool RENDER_BOUNDINGBOXES = false;
+	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
+	static const int MIN_FACES = 1000;
 
-  static std::unordered_map<Tucano::Face*, int> faceids;
+	const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
+	const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);
 
-  ~Flyscene();
+	// Default Material
+	Eigen::Vector3f ka = Eigen::Vector3f(0.2, 0.2, 0.2);
+	Eigen::Vector3f kd = Eigen::Vector3f(0.9, 0.9, 0);
+	Eigen::Vector3f ks = Eigen::Vector3f(0, 0, 0);
+	float shininess = 0;
+	float refraction_index = 0;
+	float transparency = 0;
+
+	static std::unordered_map<Tucano::Face*, int> faceids;
+	~Flyscene();
 };
 
 #endif // FLYSCENE

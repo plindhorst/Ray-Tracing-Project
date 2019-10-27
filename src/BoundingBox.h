@@ -22,7 +22,7 @@ class BoundingBox
 	float height;
 	float depth;
 	Eigen::Vector3f color = Eigen::Vector3f(1,1,1);
-	Tucano::Shapes::Box box;
+	Tucano::Shapes::Box box = NULL;
 	// All faces that should be inside this cube.
 	vector<Tucano::Face*> faces;
 

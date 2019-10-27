@@ -16,7 +16,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/bunny.obj");
+		"resources/models/toy.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -159,7 +159,6 @@ void Flyscene::raytraceScene(int width, int height) {
 		}
 		std::cout << "\r" << j << "/" << image_size[1];
 	}
-
 	// write the ray tracing result to a PPM image
 	Tucano::ImageImporter::writePPMImage("result.ppm", pixel_data);
 	std::cout << "ray tracing done! " << std::endl;
@@ -238,7 +237,7 @@ Flyscene::~Flyscene() {
 }
 
 
-float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face) {
+float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face) {
 	//get vertices and normals of the face
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 
@@ -254,7 +253,6 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 
 	//get Normal of the face
 	Eigen::Vector3f facenormal = face.normal.normalized();
-	Eigen::Vector3f dir = dest - origin;
 
 	//Return false if triangle and direction of ray are the same
 	if (facenormal.dot(dir) == 0) {
@@ -291,12 +289,11 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 }
 
 bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box) {
+	Eigen::Affine3f ME = mesh.getShapeModelMatrix();
 	Eigen::Affine3f M = mesh.getShapeModelMatrix().inverse();
-	Eigen::Affine3f MT = Eigen::Affine3f::Identity();
-	MT.translate(M.matrix().col(3).head<3>());
 	Eigen::Matrix3f MS = Eigen::Matrix3f(M.matrix().block<3, 3>(0, 0));
 
-	Eigen::Vector3f origin2 = MT * origin;
+	Eigen::Vector3f origin2 = M * origin;
 	Eigen::Vector3f dir2 = (MS * dir).normalized();
 	Eigen::Vector3f tmin = box.low - origin2;
 	Eigen::Vector3f tmax = box.high - origin2;
@@ -317,15 +314,15 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 }
 
 Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
-	if (minimum_face.material_id == -1) return FOREGROUND_COLOR;
-	Tucano::Material::Mtl material = materials[minimum_face.material_id];
-	Eigen::Vector3f ka = material.getAmbient();
-	Eigen::Vector3f kd = material.getDiffuse();
-	Eigen::Vector3f ks = material.getSpecular();
-	float shininess = material.getShininess();
-	float refraction_index = material.getOpticalDensity();
-	float transparency = material.getDissolveFactor();
-
+	if (minimum_face.material_id != -1) {
+		Tucano::Material::Mtl material = materials[minimum_face.material_id];
+		ka = material.getAmbient();
+		kd = material.getDiffuse();
+		ks = material.getSpecular();
+		shininess = material.getShininess();
+		refraction_index = material.getOpticalDensity();
+		transparency = material.getDissolveFactor();
+	}
 	Eigen::Affine3f viewMatrix = flycamera.getViewMatrix();
 	Eigen::Matrix4f projectionMatrix = flycamera.getProjectionMatrix();
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
@@ -339,8 +336,8 @@ Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face& m
 	Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
 
 	Eigen::Vector3f ambient = Eigen::Vector3f(light_intensity.x() * ka.x(), light_intensity.y() * ka.y(), light_intensity.z() * ka.z());
-	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * ks.x(), light_intensity.y() * ks.y(), light_intensity.z() * ks.z()) * std::max(lightDirection.dot(normal), 0.f);
-	Eigen::Vector3f specular = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);
+	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(lightDirection.dot(normal), 0.f);
+	Eigen::Vector3f specular = Eigen::Vector3f(light_intensity.x() * ks.x(), light_intensity.y() * ks.y(), light_intensity.z() * ks.z()) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);
 
 	Eigen::Vector3f color = ambient + diffuse + specular;
 	return color;
