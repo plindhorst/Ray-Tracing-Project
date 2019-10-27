@@ -73,7 +73,7 @@ public:
 	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dest);
 
   // TO DO: insert documentation
-  float calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face);
+  float calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face);
 
   // TO DO: insert documentation
   Eigen::Vector3f calculateColor(float minimum_distance, Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest);
@@ -116,7 +116,8 @@ private:
   void renderBoundingBoxes();
 
 public:
-  static const bool RENDER_BOUNDING = false;
+  static const bool RENDER_BOUNDINGBOXES = false;
+  static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = true;
   static const int MIN_FACES = 300;
 
   ~Flyscene();

@@ -1,6 +1,8 @@
 #include "BoundingBox.h"
 
 std::vector<BoundingBox*> BoundingBox::boxes = std::vector<BoundingBox*>();
+std::vector<Eigen::Vector3f> BoundingBox::triangleColors;
+Tucano::Mesh* BoundingBox::mesh = nullptr;
 
 BoundingBox::BoundingBox(bool remember) {
 	if (remember) boxes.push_back(this);
@@ -34,10 +36,9 @@ bool BoundingBox::hasVertex(Eigen::Vector4f& vertex) {
 		&& vertex(2) >= low(2) && vertex(2) <= high(2));
 }
 
-void BoundingBox::fitMesh(Tucano::Mesh& mesh) {
-	this->mesh = &mesh;
-	for (int i = 0; i < mesh.getNumberOfFaces(); i++) {
-		faces.push_back(&mesh.getFace(i));
+void BoundingBox::fitMesh() {
+	for (int i = 0; i < mesh->getNumberOfFaces(); i++) {
+		faces.push_back(Face{ i, &mesh->getFace(i) });
 	}
 	fitFaces();
 }
@@ -45,7 +46,7 @@ void BoundingBox::fitMesh(Tucano::Mesh& mesh) {
 void BoundingBox::fitFaces() {
 	// Predefine min and max coördinates to random vertex of random face.
 	if (faces.size() <= 0) { return; }
-	Eigen::Vector4f temp = mesh->getVertex(faces[0]->vertex_ids[0]);
+	Eigen::Vector4f temp = mesh->getVertex(faces[0].face->vertex_ids[0]);
 	float minx, miny, minz, maxx, maxy, maxz;
 	minx = maxx = temp(0);
 	miny = maxy = temp(1);
@@ -53,7 +54,7 @@ void BoundingBox::fitFaces() {
 
 	// Find lowest and highest coördinates.
 	for (int i = 0; i < faces.size(); i++) {
-		Tucano::Face face = *faces[i];
+		Tucano::Face face = *faces[i].face;
 		for (int j = 0; j < 3; j++) {
 			Eigen::Vector4f v = mesh->getVertex(face.vertex_ids[j]);
 			float x = v(0);
@@ -86,11 +87,11 @@ void BoundingBox::fitFaces() {
 	reshape();
 }
 
-vector<Tucano::Face*> BoundingBox::outsideFaces() {
-	vector<Tucano::Face*> outside = vector<Tucano::Face*>();
-	vector<Tucano::Face*> inside = vector<Tucano::Face*>();
+vector<Face> BoundingBox::outsideFaces() {
+	vector<Face> outside = vector<Face>();
+	vector<Face> inside = vector<Face>();
 	for (auto i = faces.begin(); i != faces.end(); i++) {
-		if (!hasFace(**i)) {
+		if (!hasFace(*(*i).face)) {
 			outside.push_back(*i);
 		}
 		else {
@@ -133,8 +134,18 @@ float BoundingBox::averageVertexCoord(int axis) {
 	return average;
 }
 
-void BoundingBox::setRandomColor() {
+void BoundingBox::setRandomColor(bool updateTriangleColors) {
 	color = Eigen::Vector3f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX);
+	if (updateTriangleColors) {
+		for (Face face : faces) {
+			if (triangleColors.at(face.id)(0) == -1) {
+				triangleColors.at(face.id) = color;
+			}
+			else {
+				triangleColors.at(face.id) = (triangleColors.at(face.id) + color) / 2;
+			}
+		}
+	}
 }
 
 int BoundingBox::getNumberOfFaces() {

@@ -13,7 +13,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/cube.obj");
+		"resources/models/bunny.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -183,8 +183,10 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& des
 }
 
 void Flyscene::generateBoundingBoxes() {
+	BoundingBox::mesh = &mesh;
+	BoundingBox::triangleColors = std::vector<Eigen::Vector3f>(mesh.getNumberOfFaces(), Eigen::Vector3f(-1, -1, -1));
 	BoundingBox* box = new BoundingBox(true);
-	box->fitMesh(mesh);
+	box->fitMesh();
 
 	bool notDone = true;
 	while (notDone) {
@@ -200,14 +202,16 @@ void Flyscene::generateBoundingBoxes() {
 
 	std::cout << "Boxes: " << BoundingBox::boxes.size() << std::endl;
 
-	for (BoundingBox* box : BoundingBox::boxes) {
-		box->setRandomColor();
-		if (RENDER_BOUNDING) box->generateShape();
+	if (RENDER_BOUNDINGBOXES || RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		for (BoundingBox* box : BoundingBox::boxes) {
+			box->setRandomColor(RENDER_BOUNDINGBOX_COLORED_TRIANGLES);
+			if (RENDER_BOUNDINGBOXES) box->generateShape();
+		}
 	}
 }
 
 void Flyscene::renderBoundingBoxes() {
-	if (!RENDER_BOUNDING) {
+	if (!RENDER_BOUNDINGBOXES) {
 		return;
 	}
 	for (BoundingBox* boundingBox : BoundingBox::boxes) {
@@ -219,7 +223,7 @@ Flyscene::~Flyscene() {
 	BoundingBox::deconstruct();
 }
 
-float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
+float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face) {
 	//get vertices and normals of the face
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 
@@ -271,7 +275,12 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 	}
 }
 
-Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest) {
+Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, int minimum_face_id, Eigen::Vector3f& origin, Eigen::Vector3f& dest) {
+	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		return BoundingBox::triangleColors.at(minimum_face_id);
+	}
+	Tucano::Face minimum_face = mesh.getFace(minimum_face_id);
+
 	Tucano::Material::Mtl material = materials[minimum_face.material_id];
 	Eigen::Vector3f ka = material.getAmbient();
 	Eigen::Vector3f kd = material.getDiffuse();
