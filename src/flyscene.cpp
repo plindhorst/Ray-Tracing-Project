@@ -1,7 +1,10 @@
 #include <algorithm>
 
+#include "BoundingBox.h"
 #include "flyscene.hpp"
 #include <GLFW/glfw3.h>
+
+std::unordered_map<Tucano::Face*, int> Flyscene::faceids;
 
 void Flyscene::initialize(int width, int height) {
 	// initiliaze the Phong Shading effect for the Opengl Previewer
@@ -54,6 +57,14 @@ void Flyscene::initialize(int width, int height) {
 	// }
 
 	generateBoundingBoxes();
+
+	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		// Create face pointer to id map.
+		faceids = std::unordered_map<Tucano::Face*, int>(mesh.getNumberOfFaces());
+		for (int i = 0; i < mesh.getNumberOfFaces(); i++) {
+			faceids.insert(std::pair<Tucano::Face*, int>(&mesh.getFace(i), i));
+		}
+	}
 }
 
 void Flyscene::paintGL(void) {
@@ -136,16 +147,17 @@ void Flyscene::raytraceScene(int width, int height) {
 
 	// origin of the ray is always the camera center
 	Eigen::Vector3f origin = flycamera.getCenter();
-	Eigen::Vector3f screen_coords;
+	Eigen::Vector3f direction;
 
 	// for every pixel shoot a ray from the origin through the pixel coords
 	for (int j = 0; j < image_size[1]; ++j) {
 		for (int i = 0; i < image_size[0]; ++i) {
 			// create a ray from the camera passing through the pixel (i,j)
-			screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
+			direction = (flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin).normalized();
 			// launch raytracing for the given ray and write result to pixel data
-			pixel_data[j][i] = traceRay(origin, screen_coords);
+			pixel_data[j][i] = traceRay(origin, direction);
 		}
+		std::cout << "\r" << j << "/" << image_size[1];
 	}
 
 	// write the ray tracing result to a PPM image
@@ -154,32 +166,34 @@ void Flyscene::raytraceScene(int width, int height) {
 }
 
 
-Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dest) {
+Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
 	// Parameters to keep track of current faces and the closest face
 	float minimum_distance = INFINITY;
 	Tucano::Face minimum_face;
 	float current_distance = INFINITY;
 	Tucano::Face current_face;
 
-	// Loop through all faces, calculate the distance and update the minimum_face whenever necessary
-	for (int i = 0; i < mesh.getNumberOfFaces(); i++) {
-		current_face = mesh.getFace(i);
-		current_distance = calculateDistance(origin, dest, current_face);
-		if (0 <= current_distance && current_distance < minimum_distance) {
-			minimum_distance = current_distance;
-			minimum_face = current_face;
+	// Loop through all Bounding boxes.
+	for (BoundingBox* box : BoundingBox::boxes) {
+		if (intersectBox(origin, dir, *box)) {
+			for (int i = 0; i < box->faces.size(); i++) {
+				current_face = *box->faces[i];
+				current_distance = calculateDistance(origin, dir, current_face);
+				if (0 <= current_distance && current_distance < minimum_distance) {
+					minimum_distance = current_distance;
+					minimum_face = current_face;
+				}
+			}
 		}
 	}
-	Eigen::Vector3f color;
-
 	// Test if the ray intersected with a face, if so: calculate the color
-	if (minimum_distance != INFINITY) {
-		color = calculateColor(minimum_distance, minimum_face, origin, dest);
+	if (minimum_distance == INFINITY) {
+		return BACKGROUND_COLOR;
 	}
-	else {
-		color = Eigen::Vector3f(0.9, 0.9, 0.9);
+	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
 	}
-	return color;
+	return calculateColor(minimum_distance, minimum_face, origin, dir);
 }
 
 void Flyscene::generateBoundingBoxes() {
@@ -204,8 +218,8 @@ void Flyscene::generateBoundingBoxes() {
 
 	if (RENDER_BOUNDINGBOXES || RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
 		for (BoundingBox* box : BoundingBox::boxes) {
-			box->setRandomColor(RENDER_BOUNDINGBOX_COLORED_TRIANGLES);
-			if (RENDER_BOUNDINGBOXES) box->generateShape();
+			box->setRandomColor();
+			box->generateShape();
 		}
 	}
 }
@@ -222,6 +236,7 @@ void Flyscene::renderBoundingBoxes() {
 Flyscene::~Flyscene() {
 	BoundingBox::deconstruct();
 }
+
 
 float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face) {
 	//get vertices and normals of the face
@@ -275,12 +290,44 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 	}
 }
 
-Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, int minimum_face_id, Eigen::Vector3f& origin, Eigen::Vector3f& dest) {
-	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
-		return BoundingBox::triangleColors.at(minimum_face_id);
-	}
-	Tucano::Face minimum_face = mesh.getFace(minimum_face_id);
+bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box) {
+	Eigen::Affine3f M = mesh.getShapeModelMatrix().inverse();
+	Eigen::Affine3f MT = Eigen::Affine3f::Identity();
+	MT.translate(M.matrix().col(3).head<3>());
+	Eigen::Matrix3f MS = Eigen::Matrix3f(M.matrix().block<3, 3>(0, 0));
 
+	Eigen::Vector3f origin2 = MT * origin;
+	Eigen::Vector3f dir2 = (MS * dir).normalized();
+	Eigen::Vector3f tmin = box.low - origin2;
+	Eigen::Vector3f tmax = box.high - origin2;
+	tmin(0) /= dir2(0);
+	tmax(0) /= dir2(0);
+	tmin(1) /= dir2(1);
+	tmax(1) /= dir2(1);
+	tmin(2) /= dir2(2);
+	tmax(2) /= dir2(2);
+	for (int i = 0; i < 3; i++) {
+		if (dir2(i) < 0) {
+			float temp = tmin(i);
+			tmin(i) = tmax(i);
+			tmax(i) = temp;
+		}
+	}
+	float tin = max(tmin(0), max(tmin(1), tmin(2)));
+	float tout = min(tmax(0), min(tmax(1), tmax(2)));
+	/*std::cout << "low: " << box.low(0) << "\t" << box.low(1) << "\t" << box.low(2) << std::endl;
+	std::cout << "high: " << box.high(0) << "\t" << box.high(1) << "\t" << box.high(2) << std::endl;
+	std::cout << "origin: " << origin(0) << "\t" << origin(1) << "\t" << origin(2) << std::endl;
+	std::cout << "origin2: " << origin2(0) << "\t" << origin2(1) << "\t" << origin2(2) << std::endl;
+	std::cout << "direction: " << dir(0) << "\t" << dir(1) << "\t" << dir(2) << std::endl;
+	std::cout << "direction2: " << dir2(0) << "\t" << dir2(1) << "\t" << dir2(2) << std::endl;
+	std::cout << "tmin: " << tmin(0) << "\t" << tmin(1) << "\t" << tmin(2) << std::endl;
+	std::cout << "tmax: " << tmax(0) << "\t" << tmax(1) << "\t" << tmax(2) << std::endl;
+	std::cout << "tin>tout||tout<0: " << tin << ">" << tout << "||" << tout << "<0" << std::endl;*/
+	return !(tin > tout || tout < 0);
+}
+
+Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
 	Tucano::Material::Mtl material = materials[minimum_face.material_id];
 	Eigen::Vector3f ka = material.getAmbient();
 	Eigen::Vector3f kd = material.getDiffuse();
@@ -297,7 +344,7 @@ Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, int minimum_fac
 	Eigen::Vector3f normal = minimum_face.normal.normalized();
 	Eigen::Vector3f lightDirection = (viewMatrix * lightViewMatrix.inverse() * Eigen::Vector3f(0.0, 0.0, 1.0)).normalized();
 	Eigen::Vector3f lightReflection = (-lightDirection - 2 * (normal.dot(-lightDirection)) * normal).normalized();
-	Eigen::Vector3f eyeDirection = (origin - dest).normalized();
+	Eigen::Vector3f eyeDirection = -dir;
 
 	Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
 

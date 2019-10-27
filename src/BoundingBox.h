@@ -7,11 +7,6 @@
 #include <tucano/shapes/box.hpp>
 #include <tucano/utils/flycamera.hpp>
 
-struct Face {
-	int id;
-	Tucano::Face* face;
-};
-
 class BoundingBox
 {
 	public:
@@ -29,7 +24,7 @@ class BoundingBox
 	Eigen::Vector3f color = Eigen::Vector3f(1,1,1);
 	Tucano::Shapes::Box box;
 	// All faces that should be inside this cube.
-	vector<Face> faces;
+	vector<Tucano::Face*> faces;
 
 	//	If remember, stores pointer to cube, will be deconstructed with class deconstructor.
 	BoundingBox(bool remember);
@@ -53,14 +48,14 @@ class BoundingBox
 	void fitFaces();
 
 	//	Returns the faces that are outside the cube, and removes them from the list of faces that should be inside.
-	vector<Face> outsideFaces();
+	vector<Tucano::Face*> outsideFaces();
 
 	//	Split this box along longest axis, and create a new cube to cover all lost faces.
 	BoundingBox& splitBox();
 
 	float averageVertexCoord(int axis);
 
-	void setRandomColor(bool updateTriangleColors);
+	void setRandomColor();
 
 	int getNumberOfFaces();
 

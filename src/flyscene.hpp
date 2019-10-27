@@ -1,8 +1,6 @@
 #ifndef __FLYSCENE__
 #define __FLYSCENE__
 
-#include "BoundingBox.h"
-
 // Must be included before glfw.
 #include <GL/glew.h>
 
@@ -18,6 +16,8 @@
 #include <tucano/utils/imageIO.hpp>
 #include <tucano/utils/mtlIO.hpp>
 #include <tucano/utils/objimporter.hpp>
+#include <unordered_map>
+#include "BoundingBox.h"
 
 class Flyscene {
 
@@ -70,13 +70,13 @@ public:
 	 * @param dest Other point on the ray, usually screen coordinates
 	 * @return a RGB color
 	 */
-	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dest);
+	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir);
 
   // TO DO: insert documentation
-  float calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face& face);
+  float calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
 
   // TO DO: insert documentation
-  Eigen::Vector3f calculateColor(float minimum_distance, Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest);
+  Eigen::Vector3f calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir);
 
 private:
 	// A simple phong shader for rendering meshes
@@ -115,10 +115,17 @@ private:
   void generateBoundingBoxes();
   void renderBoundingBoxes();
 
+  float calculateDistanceToPlane(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Eigen::Vector3f v0, Eigen::Vector3f normal);
+
+  bool intersectTriangle(Eigen::Vector3f P, Eigen::Vector3f v0, Eigen::Vector3f v1, Eigen::Vector3f v2, Eigen::Vector3f normal);
+  bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
+
 public:
   static const bool RENDER_BOUNDINGBOXES = false;
   static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = true;
   static const int MIN_FACES = 300;
+  static std::unordered_map<Tucano::Face*, int> faceids;
+  const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
 
   ~Flyscene();
 };
