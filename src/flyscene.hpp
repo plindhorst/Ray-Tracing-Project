@@ -115,17 +115,16 @@ private:
   void generateBoundingBoxes();
   void renderBoundingBoxes();
 
-  float calculateDistanceToPlane(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Eigen::Vector3f v0, Eigen::Vector3f normal);
-
-  bool intersectTriangle(Eigen::Vector3f P, Eigen::Vector3f v0, Eigen::Vector3f v1, Eigen::Vector3f v2, Eigen::Vector3f normal);
   bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
 
 public:
-  static const bool RENDER_BOUNDINGBOXES = false;
-  static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = true;
-  static const int MIN_FACES = 300;
-  static std::unordered_map<Tucano::Face*, int> faceids;
+  static const bool RENDER_BOUNDINGBOXES = true;
+  static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
+  static const int MIN_FACES = 3000;
   const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
+  const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);
+
+  static std::unordered_map<Tucano::Face*, int> faceids;
 
   ~Flyscene();
 };

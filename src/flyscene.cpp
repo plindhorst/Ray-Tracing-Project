@@ -233,7 +233,7 @@ void Flyscene::renderBoundingBoxes() {
 	}
 }
 
-Flyscene::~Flyscene() {
+Flyscene::~Flyscene() {
 	BoundingBox::deconstruct();
 }
 
@@ -246,9 +246,9 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 	Eigen::Vector4f vec1 = mesh.getVertex(face.vertex_ids[1]);
 	Eigen::Vector4f vec2 = mesh.getVertex(face.vertex_ids[2]);
 
-	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>()/vec0.w());
-	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>()/vec1.w());
-	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>()/vec2.w());
+	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>() / vec0.w());
+	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>() / vec1.w());
+	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>() / vec2.w());
 
 
 
@@ -306,28 +306,18 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 	tmax(1) /= dir2(1);
 	tmin(2) /= dir2(2);
 	tmax(2) /= dir2(2);
-	for (int i = 0; i < 3; i++) {
-		if (dir2(i) < 0) {
-			float temp = tmin(i);
-			tmin(i) = tmax(i);
-			tmax(i) = temp;
-		}
-	}
-	float tin = max(tmin(0), max(tmin(1), tmin(2)));
-	float tout = min(tmax(0), min(tmax(1), tmax(2)));
-	/*std::cout << "low: " << box.low(0) << "\t" << box.low(1) << "\t" << box.low(2) << std::endl;
-	std::cout << "high: " << box.high(0) << "\t" << box.high(1) << "\t" << box.high(2) << std::endl;
-	std::cout << "origin: " << origin(0) << "\t" << origin(1) << "\t" << origin(2) << std::endl;
-	std::cout << "origin2: " << origin2(0) << "\t" << origin2(1) << "\t" << origin2(2) << std::endl;
-	std::cout << "direction: " << dir(0) << "\t" << dir(1) << "\t" << dir(2) << std::endl;
-	std::cout << "direction2: " << dir2(0) << "\t" << dir2(1) << "\t" << dir2(2) << std::endl;
-	std::cout << "tmin: " << tmin(0) << "\t" << tmin(1) << "\t" << tmin(2) << std::endl;
-	std::cout << "tmax: " << tmax(0) << "\t" << tmax(1) << "\t" << tmax(2) << std::endl;
-	std::cout << "tin>tout||tout<0: " << tin << ">" << tout << "||" << tout << "<0" << std::endl;*/
+
+	Eigen::Vector3f tinv = Eigen::Vector3f(min(tmin(0), tmax(0)), min(tmin(1), tmax(1)), min(tmin(2), tmax(2)));
+	Eigen::Vector3f toutv = Eigen::Vector3f(max(tmin(0), tmax(0)), max(tmin(1), tmax(1)), max(tmin(2), tmax(2)));
+
+	float tin = max(tinv(0), max(tinv(1), tinv(2)));
+	float tout = min(toutv(0), min(toutv(1), toutv(2)));
+
 	return !(tin > tout || tout < 0);
 }
 
 Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
+	if (minimum_face.material_id == -1) return FOREGROUND_COLOR;
 	Tucano::Material::Mtl material = materials[minimum_face.material_id];
 	Eigen::Vector3f ka = material.getAmbient();
 	Eigen::Vector3f kd = material.getDiffuse();
