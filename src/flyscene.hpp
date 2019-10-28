@@ -68,9 +68,8 @@ public:
 	 * @brief trace a single ray from the camera passing through dest
 	 * @param origin Ray origin
 	 * @param dest Other point on the ray, usually screen coordinates
-	 * @return a RGB color
 	 */
-	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir);
+	void traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Eigen::Vector3f& color);
 
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);

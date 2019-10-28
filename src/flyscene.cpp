@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <thread> 
 
 #include "BoundingBox.h"
 #include "flyscene.hpp"
@@ -155,17 +156,17 @@ void Flyscene::raytraceScene(int width, int height) {
 			// create a ray from the camera passing through the pixel (i,j)
 			direction = (flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin).normalized();
 			// launch raytracing for the given ray and write result to pixel data
-			pixel_data[j][i] = traceRay(origin, direction);
+			std::thread t1(&Flyscene::traceRay, this, std::ref(origin), std::ref(direction), std::ref(pixel_data[j][i]));
+			t1.join();
 		}
 		std::cout << "\r" << j << "/" << image_size[1];
 	}
 	// write the ray tracing result to a PPM image
 	Tucano::ImageImporter::writePPMImage("result.ppm", pixel_data);
-	std::cout << "ray tracing done! " << std::endl;
+	std::cout << " ray tracing done! " << std::endl;
 }
 
-
-Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
+void Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Eigen::Vector3f& color) {
 	// Parameters to keep track of current faces and the closest face
 	float minimum_distance = INFINITY;
 	Tucano::Face minimum_face;
@@ -187,12 +188,15 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	}
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance == INFINITY) {
-		return BACKGROUND_COLOR;
+		color = BACKGROUND_COLOR;
 	}
-	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
-		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
+	else if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		color = BoundingBox::triangleColors.at(faceids[&minimum_face]);
 	}
-	return calculateColor(minimum_distance, minimum_face, origin, dir);
+	else {
+		color = calculateColor(minimum_distance, minimum_face, origin, dir);
+	}
+
 }
 
 void Flyscene::generateBoundingBoxes() {
