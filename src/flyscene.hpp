@@ -104,6 +104,10 @@ private:
 	/// A very thin cylinder to draw a debug ray
 	Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.1, 1.0, 16, 64);
 
+	/// A reflect ray
+	Tucano::Shapes::Cylinder reflectRay = Tucano::Shapes::Cylinder(0.1, 1.0, 16, 64);
+
+
 	// Scene meshes
 	Tucano::Mesh mesh;
 
@@ -111,6 +115,8 @@ private:
 	vector<Tucano::Material::Mtl> materials;
 
 	// SELFMADE
+
+	std::pair<float, Tucano::Face> findMinimumFaceDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir);
 
 	void generateBoundingBoxes();
 	void renderBoundingBoxes();

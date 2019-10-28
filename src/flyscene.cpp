@@ -3,6 +3,7 @@
 #include "BoundingBox.h"
 #include "flyscene.hpp"
 #include <GLFW/glfw3.h>
+#include <time.h>
 
 std::unordered_map<Tucano::Face*, int> Flyscene::faceids;
 
@@ -40,9 +41,6 @@ void Flyscene::initialize(int width, int height) {
 	// the debug ray is a cylinder, set the radius and length of the cylinder
 	ray.setSize(0.005, 10.0);
 
-	// craete a first debug ray pointing at the center of the screen
-	createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
-
 	glEnable(GL_DEPTH_TEST);
 
 	// for (int i = 0; i<mesh.getNumberOfFaces(); ++i){
@@ -65,6 +63,9 @@ void Flyscene::initialize(int width, int height) {
 			faceids.insert(std::pair<Tucano::Face*, int>(&mesh.getFace(i), i));
 		}
 	}
+
+	// craete a first debug ray pointing at the center of the screen
+	createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 }
 
 void Flyscene::paintGL(void) {
@@ -86,6 +87,8 @@ void Flyscene::paintGL(void) {
 
 	// render the ray and camera representation for ray debug
 	ray.render(flycamera, scene_light);
+	reflectRay.render(flycamera, scene_light);
+
 	camerarep.render(flycamera, scene_light);
 
 	// render ray tracing light sources as yellow spheres
@@ -121,6 +124,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 
 	// direction from camera center to click position
 	Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
+	Eigen::Vector3f origin = flycamera.getCenter();
 
 	// position and orient the cylinder representing the ray
 	ray.setOriginOrientation(flycamera.getCenter(), dir);
@@ -128,10 +132,34 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 	// place the camera representation (frustum) on current camera location, 
 	camerarep.resetModelMatrix();
 	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
+	//Eigen::Vector3f color = traceRay(origin, dir);
+	
+
+	std::pair<float, Tucano::Face> pair = findMinimumFaceDistance(origin, dir);
+	float minimum_distance = pair.first;
+
+	//Check if it does intersect
+	if (minimum_distance >= 0 && minimum_distance != INFINITY) {
+		ray.setSize(ray.getRadius(), minimum_distance);
+
+		std::pair<Eigen::Vector3f, float> minDistance = calculateDistance(origin, dir, pair.second);
+		Eigen::Vector3f intersect = minDistance.first;
+		Eigen::Vector3f normal = pair.second.normal.normalized();
+		Eigen::Vector3f rayReflection = (dir - 2 * (normal.dot(dir)) * normal).normalized();
+		Eigen::Vector3f color = traceRay(origin, dir);
+		Eigen::Vector4f colorExtra = Eigen::Vector4f(color.x(), color.y(), color.z(), 1);
+
+		reflectRay.resetModelMatrix();
+		reflectRay.setOriginOrientation(intersect, rayReflection);
+		reflectRay.setColor(colorExtra);
+		reflectRay.setSize(ray.getRadius(), ray.getHeight());
+	}
+	std::cout << "Debug ray updated" << std::endl;
 }
 
 void Flyscene::raytraceScene(int width, int height) {
 	std::cout << "ray tracing ..." << std::endl;
+	time_t begin_time = time(NULL);
 
 	// if no width or height passed, use dimensions of current viewport
 	Eigen::Vector2i image_size(width, height);
@@ -159,13 +187,32 @@ void Flyscene::raytraceScene(int width, int height) {
 		}
 		std::cout << "\r" << j << "/" << image_size[1];
 	}
+
+	time_t end_time = time(NULL);
 	// write the ray tracing result to a PPM image
 	Tucano::ImageImporter::writePPMImage("result.ppm", pixel_data);
+	std::cout << std::endl << "Time it took to render(in seconds): " << end_time - begin_time << std::endl;
 	std::cout << "ray tracing done! " << std::endl;
 }
 
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
+	std::pair<float, Tucano::Face> pair = findMinimumFaceDistance(origin, dir);
+	float minimum_distance = pair.first;
+	Tucano::Face minimum_face = pair.second;
+
+	// Test if the ray intersected with a face, if so: calculate the color
+	if (minimum_distance == INFINITY) {
+		return BACKGROUND_COLOR;
+	}
+	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
+	}
+	return calculateColor(minimum_distance, minimum_face, origin, dir);
+}
+
+
+std::pair<float, Tucano::Face> Flyscene::findMinimumFaceDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
 	// Parameters to keep track of current faces and the closest face
 	float minimum_distance = INFINITY;
 	Tucano::Face minimum_face;
@@ -185,14 +232,8 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 			}
 		}
 	}
-	// Test if the ray intersected with a face, if so: calculate the color
-	if (minimum_distance == INFINITY) {
-		return BACKGROUND_COLOR;
-	}
-	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
-		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
-	}
-	return calculateColor(minimum_distance, minimum_face, origin, dir);
+	std::pair<float, Tucano::Face> pair; pair.first = minimum_distance; pair.second = minimum_face;
+	return pair;
 }
 
 void Flyscene::generateBoundingBoxes() {
