@@ -1,7 +1,10 @@
 #include <algorithm>
 
+#include "BoundingBox.h"
 #include "flyscene.hpp"
 #include <GLFW/glfw3.h>
+
+std::unordered_map<Tucano::Face*, int> Flyscene::faceids;
 
 void Flyscene::initialize(int width, int height) {
 	// initiliaze the Phong Shading effect for the Opengl Previewer
@@ -13,7 +16,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/cube.obj");
+		"resources/models/toy.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -53,8 +56,15 @@ void Flyscene::initialize(int width, int height) {
 	//   std::cout<<"face   normal "<<face.normal.transpose() << std::endl << std::endl;
 	// }
 
+	generateBoundingBoxes();
 
-
+	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		// Create face pointer to id map.
+		faceids = std::unordered_map<Tucano::Face*, int>(mesh.getNumberOfFaces());
+		for (int i = 0; i < mesh.getNumberOfFaces(); i++) {
+			faceids.insert(std::pair<Tucano::Face*, int>(&mesh.getFace(i), i));
+		}
+	}
 }
 
 void Flyscene::paintGL(void) {
@@ -87,6 +97,8 @@ void Flyscene::paintGL(void) {
 
 	// render coordinate system at lower right corner
 	flycamera.renderAtCorner();
+
+	renderBoundingBoxes();
 }
 
 void Flyscene::simulate(GLFWwindow* window) {
@@ -135,85 +147,97 @@ void Flyscene::raytraceScene(int width, int height) {
 
 	// origin of the ray is always the camera center
 	Eigen::Vector3f origin = flycamera.getCenter();
-	Eigen::Vector3f screen_coords;
+	Eigen::Vector3f direction;
 
 	// for every pixel shoot a ray from the origin through the pixel coords
 	for (int j = 0; j < image_size[1]; ++j) {
 		for (int i = 0; i < image_size[0]; ++i) {
 			// create a ray from the camera passing through the pixel (i,j)
-			screen_coords = flycamera.screenToWorld(Eigen::Vector2f(i, j));
+			direction = (flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin).normalized();
 			// launch raytracing for the given ray and write result to pixel data
-			pixel_data[j][i] = traceRay(origin, screen_coords);
+			pixel_data[j][i] = traceRay(origin, direction);
 		}
+		std::cout << "\r" << j << "/" << image_size[1];
 	}
-
 	// write the ray tracing result to a PPM image
 	Tucano::ImageImporter::writePPMImage("result.ppm", pixel_data);
 	std::cout << "ray tracing done! " << std::endl;
 }
 
 
-Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dest) {
+Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
 	// Parameters to keep track of current faces and the closest face
 	float minimum_distance = INFINITY;
 	Tucano::Face minimum_face;
 	float current_distance = INFINITY;
 	Tucano::Face current_face;
 
-	// Loop through all faces, calculate the distance and update the minimum_face whenever necessary
-	for (int i = 0; i < mesh.getNumberOfFaces(); i++) {
-		current_face = mesh.getFace(i);
-		current_distance = calculateDistance(origin, dest, current_face);
-		if (0 <= current_distance && current_distance < minimum_distance) {
-			minimum_distance = current_distance;
-			minimum_face = current_face;
+	// Loop through all Bounding boxes.
+	for (BoundingBox* box : BoundingBox::boxes) {
+		if (intersectBox(origin, dir, *box)) {
+			for (int i = 0; i < box->faces.size(); i++) {
+				current_face = *box->faces[i];
+				current_distance = calculateDistance(origin, dir, current_face);
+				if (0 <= current_distance && current_distance < minimum_distance) {
+					minimum_distance = current_distance;
+					minimum_face = current_face;
+				}
+			}
 		}
 	}
-	Eigen::Vector3f color;
-
 	// Test if the ray intersected with a face, if so: calculate the color
-	if (minimum_distance != INFINITY) {
-		color = calculateColor(minimum_distance, minimum_face, origin, dest);
+	if (minimum_distance == INFINITY) {
+		return BACKGROUND_COLOR;
 	}
-	else {
-		color = Eigen::Vector3f(0.9, 0.9, 0.9);
+	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
 	}
-	return color;
+	return calculateColor(minimum_distance, minimum_face, origin, dir);
 }
 
-void Flyscene::generateBoxes() {
-	int minimumFacesPerBoundingBox = 300;
-	Cube* cube = new Cube(true);
-	cube->fitMesh(mesh);
+void Flyscene::generateBoundingBoxes() {
+	BoundingBox::mesh = &mesh;
+	BoundingBox::triangleColors = std::vector<Eigen::Vector3f>(mesh.getNumberOfFaces(), Eigen::Vector3f(-1, -1, -1));
+	BoundingBox* box = new BoundingBox(true);
+	box->fitMesh();
 
 	bool notDone = true;
 	while (notDone) {
 		notDone = false;
-		vector<Cube*> current = Cube::cubes;
-		for (Cube* c : current) {
-			if (c->getNumberOfFaces() > minimumFacesPerBoundingBox) {
-				c->splitcube();
+		vector<BoundingBox*> current = BoundingBox::boxes;
+		for (BoundingBox* box : current) {
+			if (box->getNumberOfFaces() > MIN_FACES) {
+				box->splitBox();
 				notDone = true;
 			}
 		}
 	}
 
-	for (Cube* c : Cube::cubes) {
-		c->setRandomColor();
+	std::cout << "Boxes: " << BoundingBox::boxes.size() << std::endl;
+
+	if (RENDER_BOUNDINGBOXES || RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		for (BoundingBox* box : BoundingBox::boxes) {
+			box->setRandomColor();
+			box->generateShape();
+		}
 	}
 }
 
-void Flyscene::renderBoxes() {
-	for (Cube* cube : Cube::cubes) {
-		cube->render(flycamera, scene_light);
+void Flyscene::renderBoundingBoxes() {
+	if (!RENDER_BOUNDINGBOXES) {
+		return;
+	}
+	for (BoundingBox* boundingBox : BoundingBox::boxes) {
+		boundingBox->render(flycamera, scene_light);
 	}
 }
 
 Flyscene::~Flyscene() {
-	Cube::deconstruct();
+	BoundingBox::deconstruct();
 }
 
-float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest, Tucano::Face face) {
+
+float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face) {
 	//get vertices and normals of the face
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 
@@ -221,15 +245,14 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 	Eigen::Vector4f vec1 = mesh.getVertex(face.vertex_ids[1]);
 	Eigen::Vector4f vec2 = mesh.getVertex(face.vertex_ids[2]);
 
-	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>()/vec0.w());
-	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>()/vec1.w());
-	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>()/vec2.w());
+	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>() / vec0.w());
+	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>() / vec1.w());
+	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>() / vec2.w());
 
 
 
 	//get Normal of the face
 	Eigen::Vector3f facenormal = face.normal.normalized();
-	Eigen::Vector3f dir = dest - origin;
 
 	//Return false if triangle and direction of ray are the same
 	if (facenormal.dot(dir) == 0) {
@@ -265,15 +288,41 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dest
 	}
 }
 
-Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dest) {
-	Tucano::Material::Mtl material = materials[minimum_face.material_id];
-	Eigen::Vector3f ka = material.getAmbient();
-	Eigen::Vector3f kd = material.getDiffuse();
-	Eigen::Vector3f ks = material.getSpecular();
-	float shininess = material.getShininess();
-	float refraction_index = material.getOpticalDensity();
-	float transparency = material.getDissolveFactor();
+bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box) {
+	Eigen::Affine3f ME = mesh.getShapeModelMatrix();
+	Eigen::Affine3f M = mesh.getShapeModelMatrix().inverse();
+	Eigen::Matrix3f MS = Eigen::Matrix3f(M.matrix().block<3, 3>(0, 0));
 
+	Eigen::Vector3f origin2 = M * origin;
+	Eigen::Vector3f dir2 = (MS * dir).normalized();
+	Eigen::Vector3f tmin = box.low - origin2;
+	Eigen::Vector3f tmax = box.high - origin2;
+	tmin(0) /= dir2(0);
+	tmax(0) /= dir2(0);
+	tmin(1) /= dir2(1);
+	tmax(1) /= dir2(1);
+	tmin(2) /= dir2(2);
+	tmax(2) /= dir2(2);
+
+	Eigen::Vector3f tinv = Eigen::Vector3f(min(tmin(0), tmax(0)), min(tmin(1), tmax(1)), min(tmin(2), tmax(2)));
+	Eigen::Vector3f toutv = Eigen::Vector3f(max(tmin(0), tmax(0)), max(tmin(1), tmax(1)), max(tmin(2), tmax(2)));
+
+	float tin = max(tinv(0), max(tinv(1), tinv(2)));
+	float tout = min(toutv(0), min(toutv(1), toutv(2)));
+
+	return !(tin > tout || tout < 0);
+}
+
+Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
+	if (minimum_face.material_id != -1) {
+		Tucano::Material::Mtl material = materials[minimum_face.material_id];
+		ka = material.getAmbient();
+		kd = material.getDiffuse();
+		ks = material.getSpecular();
+		shininess = material.getShininess();
+		refraction_index = material.getOpticalDensity();
+		transparency = material.getDissolveFactor();
+	}
 	Eigen::Affine3f viewMatrix = flycamera.getViewMatrix();
 	Eigen::Matrix4f projectionMatrix = flycamera.getProjectionMatrix();
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
@@ -282,13 +331,13 @@ Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face mi
 	Eigen::Vector3f normal = minimum_face.normal.normalized();
 	Eigen::Vector3f lightDirection = (viewMatrix * lightViewMatrix.inverse() * Eigen::Vector3f(0.0, 0.0, 1.0)).normalized();
 	Eigen::Vector3f lightReflection = (-lightDirection - 2 * (normal.dot(-lightDirection)) * normal).normalized();
-	Eigen::Vector3f eyeDirection = (origin - dest).normalized();
+	Eigen::Vector3f eyeDirection = -dir;
 
 	Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
 
 	Eigen::Vector3f ambient = Eigen::Vector3f(light_intensity.x() * ka.x(), light_intensity.y() * ka.y(), light_intensity.z() * ka.z());
-	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * ks.x(), light_intensity.y() * ks.y(), light_intensity.z() * ks.z()) * std::max(lightDirection.dot(normal), 0.f);
-	Eigen::Vector3f specular = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);
+	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(lightDirection.dot(normal), 0.f);
+	Eigen::Vector3f specular = Eigen::Vector3f(light_intensity.x() * ks.x(), light_intensity.y() * ks.y(), light_intensity.z() * ks.z()) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);
 
 	Eigen::Vector3f color = ambient + diffuse + specular;
 	return color;
