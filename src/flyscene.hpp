@@ -70,10 +70,16 @@ public:
 	 * @param dest Other point on the ray, usually screen coordinates
 	 * @return a RGB color
 	 */
-	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir);
+	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth, int max_depth);
 
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
+
+	// TO DO: insert documentation
+	Eigen::Vector3f reflect(Eigen::Vector3f direction, Eigen::Vector3f normal);
+
+	// TO DO: insert documentation
+	Eigen::Vector3f refract(Eigen::Vector3f direction, Tucano::Face face);
 
 	// TO DO: insert documentation
 	Eigen::Vector3f calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir);

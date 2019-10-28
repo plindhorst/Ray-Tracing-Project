@@ -16,7 +16,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/toy.obj");
+		"resources/models/cube.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -133,6 +133,9 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 void Flyscene::raytraceScene(int width, int height) {
 	std::cout << "ray tracing ..." << std::endl;
 
+	// MAXIMUM DEPTH PARAMETER: ALTER TO CHANGE THE DEPTH OF RECURSION
+	int max_depth = 1;
+
 	// if no width or height passed, use dimensions of current viewport
 	Eigen::Vector2i image_size(width, height);
 	if (width == 0 || height == 0) {
@@ -155,7 +158,7 @@ void Flyscene::raytraceScene(int width, int height) {
 			// create a ray from the camera passing through the pixel (i,j)
 			direction = (flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin).normalized();
 			// launch raytracing for the given ray and write result to pixel data
-			pixel_data[j][i] = traceRay(origin, direction);
+			pixel_data[j][i] = traceRay(origin, direction, 0, max_depth);
 		}
 		std::cout << "\r" << j << "/" << image_size[1];
 	}
@@ -165,22 +168,27 @@ void Flyscene::raytraceScene(int width, int height) {
 }
 
 
-Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
+Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth, int max_depth) {
 	// Parameters to keep track of current faces and the closest face
 	float minimum_distance = INFINITY;
 	Tucano::Face minimum_face;
 	float current_distance = INFINITY;
 	Tucano::Face current_face;
 
+	std::pair<Eigen::Vector3f, float> dist;
+	Eigen::Vector3f intersection_point;
+
 	// Loop through all Bounding boxes.
 	for (BoundingBox* box : BoundingBox::boxes) {
 		if (intersectBox(origin, dir, *box)) {
 			for (int i = 0; i < box->faces.size(); i++) {
 				current_face = *box->faces[i];
-				current_distance = calculateDistance(origin, dir, current_face).second;
+				dist = calculateDistance(origin, dir, current_face);
+				current_distance = dist.second;
 				if (0 <= current_distance && current_distance < minimum_distance) {
 					minimum_distance = current_distance;
 					minimum_face = current_face;
+					intersection_point = dist.first;
 				}
 			}
 		}
@@ -192,7 +200,23 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
 		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
 	}
-	return calculateColor(minimum_distance, minimum_face, origin, dir);
+
+	std::cout << "Intersected!" << std::endl;
+
+	// RECURSIVELY CALCULATE COLOR
+	// Direct color component
+	Eigen::Vector3f direct_color = calculateColor(minimum_distance, minimum_face, origin, dir);
+	std::cout << direct_color << std::endl;
+	// Reflected color component
+	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal.normalized());
+	Eigen::Vector3f reflected_color = traceRay(intersection_point, reflected_ray, depth + 1, max_depth);
+	// Refracted color component
+	Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
+	Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1, max_depth);
+
+	// Add all color components together
+	float transparency = materials[minimum_face.material_id].getOpticalDensity();
+	return direct_color + reflected_color + (1 - transparency) * refracted_color;
 }
 
 void Flyscene::generateBoundingBoxes() {
@@ -318,6 +342,16 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 	float tout = min(toutv(0), min(toutv(1), toutv(2)));
 
 	return !(tin > tout || tout < 0);
+}
+
+Eigen::Vector3f Flyscene::reflect(Eigen::Vector3f direction, Eigen::Vector3f normal) {
+	return (direction - 2 * (direction.dot(normal) * normal)).normalized();
+}
+
+
+Eigen::Vector3f Flyscene::refract(Eigen::Vector3f direction, Tucano::Face face) {
+	// TO DO: implement
+	return direction;
 }
 
 Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
