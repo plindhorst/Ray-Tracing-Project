@@ -155,7 +155,7 @@ void Flyscene::raytraceScene(int width, int height) {
 	// create spherical lights out of point lights
 	vector<Eigen::Vector3f> lightsDup = lights;
 	for (int i = 0; i < lightsDup.size(); i++) {
-		sphericalLight(lightsDup[i], 0.15, 15);
+		sphericalLight(lightsDup[i], 0.15, nSphereLights);
 	}
 
 	// for every pixel shoot a ray from the origin through the pixel coords
@@ -330,13 +330,19 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 }
 
 //Call function in calculate color, if it returns true => pixel should be black/ambiant. If it returns false => the pixel should have a color.
-bool Flyscene::shadow(Eigen::Vector3f& loc, Eigen::Vector3f& lightLoc) {
-	Eigen::Vector3f lightDirection = loc - lightLoc;
+bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightLoc) {
+	Eigen::Vector3f lightDirection = (pointP - lightLoc).normalized();
 	Tucano::Face current_face;
-	for (int i = 0; i < Flyscene::mesh.getNumberOfFaces(); i++) {
-		current_face = mesh.getFace(i);
-		if (calculateDistance(loc, lightDirection, current_face).second>=0) {
-			return true;
+
+	// Loop through all Bounding boxes.
+	for (BoundingBox* box : BoundingBox::boxes) {
+		if (intersectBox(lightLoc, lightDirection, *box)) {
+			for (int i = 0; i < box->faces.size(); i++) {
+				current_face = *box->faces[i];
+				if (calculateDistance(lightLoc, lightDirection, current_face).second >= 0) {
+					return true;
+				}
+			}
 		}
 	}
 	return false;
@@ -368,13 +374,6 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 		refraction_index = material.getOpticalDensity();
 		transparency = material.getDissolveFactor();
 	}
-	Tucano::Material::Mtl material = materials[minimum_face.material_id];
-	Eigen::Vector3f ka = material.getAmbient();
-	Eigen::Vector3f kd = material.getDiffuse();
-	Eigen::Vector3f ks = material.getSpecular();
-	float shininess = material.getShininess();
-	float refraction_index = material.getOpticalDensity();
-	float transparency = material.getDissolveFactor();
 
 	Eigen::Vector3f normal = minimum_face.normal.normalized();
 	Eigen::Vector3f lightDirection = (pointP - lightLoc).normalized();
