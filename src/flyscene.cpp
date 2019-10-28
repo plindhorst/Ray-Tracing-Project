@@ -177,7 +177,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 		if (intersectBox(origin, dir, *box)) {
 			for (int i = 0; i < box->faces.size(); i++) {
 				current_face = *box->faces[i];
-				current_distance = calculateDistance(origin, dir, current_face);
+				current_distance = calculateDistance(origin, dir, current_face).second;
 				if (0 <= current_distance && current_distance < minimum_distance) {
 					minimum_distance = current_distance;
 					minimum_face = current_face;
@@ -237,7 +237,7 @@ Flyscene::~Flyscene() {
 }
 
 
-float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face) {
+std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face) {
 	//get vertices and normals of the face
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 
@@ -256,7 +256,9 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir,
 
 	//Return false if triangle and direction of ray are the same
 	if (facenormal.dot(dir) == 0) {
-		return (float)-1;
+		std::pair<Eigen::Vector3f, float> pair;
+		pair.second = (float)-1;
+		return pair;
 	}
 	//Calculate the distance between the plane and the origin (not the camera)
 	float distancePlane = facenormal.dot(vert0);
@@ -281,10 +283,15 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir,
 
 	//If any area is smaller or equal to zero, point is on the wrong side of the edge. 
 	if (area0 < 0 || area1 < 0 || area2 < 0) {
-		return (float)-1;
+		std::pair<Eigen::Vector3f, float> pair;
+		pair.second = (float)-1;
+		return pair;
 	}
 	else {
-		return t;
+		std::pair<Eigen::Vector3f, float> pair;
+		pair.first = PointP;
+		pair.second = t;
+		return pair;
 	}
 }
 
