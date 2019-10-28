@@ -176,9 +176,9 @@ void Flyscene::raytraceScene(int width, int height) {
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
 	// Parameters to keep track of current faces and the closest face
-	float minimum_distance = INFINITY;
+	std::pair<Eigen::Vector3f, float> minimum_distance_and_point = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
 	Tucano::Face minimum_face;
-	float current_distance = INFINITY;
+	std::pair<Eigen::Vector3f, float> current_distance_and_point = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
 	Tucano::Face current_face;
 
 	// Loop through all Bounding boxes.
@@ -186,22 +186,22 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 		if (intersectBox(origin, dir, *box)) {
 			for (int i = 0; i < box->faces.size(); i++) {
 				current_face = *box->faces[i];
-				current_distance = calculateDistance(origin, dir, current_face);
-				if (0 <= current_distance && current_distance < minimum_distance) {
-					minimum_distance = current_distance;
+				current_distance_and_point = calculateDistance(origin, dir, current_face);
+				if (0 <= current_distance_and_point.second && current_distance_and_point.second < minimum_distance_and_point.second) {
+					minimum_distance_and_point = current_distance_and_point;
 					minimum_face = current_face;
 				}
 			}
 		}
 	}
 	// Test if the ray intersected with a face, if so: calculate the color
-	if (minimum_distance == INFINITY) {
+	if (minimum_distance_and_point.second == INFINITY) {
 		return BACKGROUND_COLOR;
 	}
 	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
 		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
 	}
-	return calculateColor()
+	return calculateColor(minimum_face, origin, minimum_distance_and_point.first);
 }
 
 void Flyscene::generateBoundingBoxes() {
@@ -246,7 +246,7 @@ Flyscene::~Flyscene() {
 }
 
 
-float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face) {
+std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face) {
 	//get vertices and normals of the face
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 
@@ -265,7 +265,9 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir,
 
 	//Return false if triangle and direction of ray are the same
 	if (facenormal.dot(dir) == 0) {
-		return (float)-1;
+		std::pair<Eigen::Vector3f, float> pair;
+		pair.second = (float)-1;
+		return pair;
 	}
 	//Calculate the distance between the plane and the origin (not the camera)
 	float distancePlane = facenormal.dot(vert0);
@@ -290,10 +292,15 @@ float Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir,
 
 	//If any area is smaller or equal to zero, point is on the wrong side of the edge. 
 	if (area0 < 0 || area1 < 0 || area2 < 0) {
-		return (float)-1;
+		std::pair<Eigen::Vector3f, float> pair;
+		pair.second = (float)-1;
+		return pair;
 	}
 	else {
-		return t;
+		std::pair<Eigen::Vector3f, float> pair;
+		pair.first = PointP;
+		pair.second = t;
+		return pair;
 	}
 }
 
@@ -328,7 +335,7 @@ bool Flyscene::shadow(Eigen::Vector3f& loc, Eigen::Vector3f& lightLoc) {
 	Tucano::Face current_face;
 	for (int i = 0; i < Flyscene::mesh.getNumberOfFaces(); i++) {
 		current_face = mesh.getFace(i);
-		if (intersection(loc, lightDirection, current_face) != -1) {
+		if (calculateDistance(loc, lightDirection, current_face).second>=0) {
 			return true;
 		}
 	}
