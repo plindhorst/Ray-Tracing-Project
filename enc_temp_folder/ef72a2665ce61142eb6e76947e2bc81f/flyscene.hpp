@@ -70,27 +70,21 @@ public:
 	 * @param dest Other point on the ray, usually screen coordinates
 	 * @return a RGB color
 	 */
-	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth);
+	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir);
 
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
 
-	// TO DO: insert documentation
-	Eigen::Vector3f reflect(Eigen::Vector3f direction, Eigen::Vector3f normal);
+  /**
+  *Check if light is obstructed
+  */
+  bool shadow(Tucano::Face minimum_face, Eigen::Vector3f& dest, Eigen::Vector3f& light);
 
-	// TO DO: insert documentation
-	Eigen::Vector3f refract(Eigen::Vector3f direction, Tucano::Face face);
+  void sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLightpoints);
 
-	/**
-	*Check if light is obstructed
-	*/
-	bool shadow(Eigen::Vector3f& dest, Eigen::Vector3f& light);
+  Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP);
 
-	void sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLightpoints);
-
-	Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP);
-
-	Eigen::Vector3f calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP);
+  Eigen::Vector3f calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP);
 
 private:
 	// A simple phong shader for rendering meshes
@@ -130,8 +124,6 @@ private:
 	void renderBoundingBoxes();
 
 	bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
-
-	int max_depth = 2;
 
 public:
 	static const bool RENDER_BOUNDINGBOXES = false;
