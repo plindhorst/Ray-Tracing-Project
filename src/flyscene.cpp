@@ -134,7 +134,7 @@ void Flyscene::raytraceScene(int width, int height) {
 	std::cout << "ray tracing ..." << std::endl;
 
 	// MAXIMUM DEPTH PARAMETER: ALTER TO CHANGE THE DEPTH OF RECURSION
-	int max_depth = 1;
+	int max_depth = 2;
 
 	// if no width or height passed, use dimensions of current viewport
 	Eigen::Vector2i image_size(width, height);
@@ -169,6 +169,11 @@ void Flyscene::raytraceScene(int width, int height) {
 
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth, int max_depth) {
+	// Depth check
+	if (depth == max_depth) {
+		return Eigen::Vector3f(0, 0, 0);
+	}
+	
 	// Parameters to keep track of current faces and the closest face
 	float minimum_distance = INFINITY;
 	Tucano::Face minimum_face;
@@ -201,22 +206,19 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
 	}
 
-	std::cout << "Intersected!" << std::endl;
-
 	// RECURSIVELY CALCULATE COLOR
 	// Direct color component
 	Eigen::Vector3f direct_color = calculateColor(minimum_distance, minimum_face, origin, dir);
-	std::cout << direct_color << std::endl;
 	// Reflected color component
 	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal.normalized());
 	Eigen::Vector3f reflected_color = traceRay(intersection_point, reflected_ray, depth + 1, max_depth);
 	// Refracted color component
-	Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
-	Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1, max_depth);
+	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
+	//Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1, max_depth);
 
 	// Add all color components together
 	float transparency = materials[minimum_face.material_id].getOpticalDensity();
-	return direct_color + reflected_color + (1 - transparency) * refracted_color;
+	return direct_color + reflected_color; // + (1 - transparency) * refracted_color;
 }
 
 void Flyscene::generateBoundingBoxes() {
