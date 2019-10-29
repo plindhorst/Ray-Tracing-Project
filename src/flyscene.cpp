@@ -16,7 +16,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/cube.obj");
+		"resources/models/plane.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -169,7 +169,6 @@ void Flyscene::raytraceScene(int width, int height) {
 
 
 Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth, int max_depth) {
-	// Depth check
 	if (depth == max_depth) {
 		return Eigen::Vector3f(0, 0, 0);
 	}
@@ -200,7 +199,10 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	}
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance == INFINITY) {
-		return Eigen::Vector3f(0, 0, 0);
+		if (depth == 0) {
+			return BACKGROUND_COLOR;
+		}
+		return Eigen::Vector3f(0.0, 0.0, 0.0);
 	}
 	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
 		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
@@ -209,17 +211,21 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	// RECURSIVELY CALCULATE COLOR
 	// Direct color component
 	Eigen::Vector3f direct_color = calculateColor(minimum_distance, minimum_face, origin, dir);
-	// Reflected color component
+	
+	// Material properties
+	float transparency = materials[minimum_face.material_id].getOpticalDensity();
+	Eigen::Vector3f ks = materials[minimum_face.material_id].getSpecular();
+
+	// Reflected component
 	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal.normalized());
 	Eigen::Vector3f reflected_color = traceRay(intersection_point, reflected_ray, depth + 1, max_depth);
-	// Refracted color component
+
+	// Refracted component
 	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
 	//Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1, max_depth);
 
-	// Add all color components together
-	float transparency = materials[minimum_face.material_id].getOpticalDensity();
-	Eigen::Vector3f color = direct_color + reflected_color; //  + (1 - transparency) * refracted_color;
-	return color;
+	// Add all colors
+	return direct_color + reflected_color.cwiseProduct(ks);
 }
 
 void Flyscene::generateBoundingBoxes() {
