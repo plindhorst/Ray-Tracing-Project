@@ -200,7 +200,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	}
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance == INFINITY) {
-		return BACKGROUND_COLOR;
+		return Eigen::Vector3f(0, 0, 0);
 	}
 	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
 		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
@@ -218,7 +218,8 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 
 	// Add all color components together
 	float transparency = materials[minimum_face.material_id].getOpticalDensity();
-	return direct_color + reflected_color; // + (1 - transparency) * refracted_color;
+	Eigen::Vector3f color = direct_color + reflected_color; //  + (1 - transparency) * refracted_color;
+	return color;
 }
 
 void Flyscene::generateBoundingBoxes() {
@@ -274,8 +275,6 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>() / vec0.w());
 	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>() / vec1.w());
 	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>() / vec2.w());
-
-
 
 	//get Normal of the face
 	Eigen::Vector3f facenormal = face.normal.normalized();
