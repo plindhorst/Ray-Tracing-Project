@@ -68,8 +68,11 @@ public:
 	 * @brief trace a single ray from the camera passing through dest
 	 * @param origin Ray origin
 	 * @param dest Other point on the ray, usually screen coordinates
+	 * @return a RGB color
 	 */
-	void traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Eigen::Vector3f& color);
+	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir);
+
+	void traceRayThread(int h, int w, int start, int stop, vector<vector<Eigen::Vector3f>>& pixel_data);
 
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
@@ -78,6 +81,8 @@ public:
 	Eigen::Vector3f calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir);
 
 private:
+	int COUNT;
+
 	// A simple phong shader for rendering meshes
 	Tucano::Effects::PhongMaterial phong;
 
@@ -120,6 +125,8 @@ public:
 	static const bool RENDER_BOUNDINGBOXES = false;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
 	static const int MIN_FACES = 1000;
+
+	static const int THREADS = 20;
 
 	const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
 	const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);

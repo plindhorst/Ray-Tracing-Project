@@ -1,5 +1,7 @@
 #include <algorithm>
-#include <thread> 
+#include <thread>
+#include <future>
+#include <time.h>
 
 #include "BoundingBox.h"
 #include "flyscene.hpp"
@@ -133,6 +135,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 
 void Flyscene::raytraceScene(int width, int height) {
 	std::cout << "ray tracing ..." << std::endl;
+	time_t begin_time = time(NULL);
 
 	// if no width or height passed, use dimensions of current viewport
 	Eigen::Vector2i image_size(width, height);
@@ -146,27 +149,49 @@ void Flyscene::raytraceScene(int width, int height) {
 	for (int i = 0; i < image_size[1]; ++i)
 		pixel_data[i].resize(image_size[0]);
 
+	std::vector<std::thread> threads;
+
+	COUNT = 0;
+	int start = 0;
+	int pixels = image_size[1] / THREADS;
+	for (int i = 0; i < THREADS; i++) {
+		threads.emplace_back(&Flyscene::traceRayThread, this, image_size[1], image_size[0],start, start + pixels, std::ref(pixel_data));
+		start += pixels;
+	}
+
+	while (COUNT < 1000) {
+		std::cout << "\r" << (COUNT + 1) << "/" << image_size[1];
+	}
+
+	for (std::thread& t : threads) {
+		t.join();
+	}
+
+	// write the ray tracing result to a PPM image
+	Tucano::ImageImporter::writePPMImage("result.ppm", pixel_data);
+
+	time_t end_time = time(NULL);
+	std::cout << " ray tracing done! " << std::endl;
+	std::cout << std::endl << "Time it took to render(in seconds): " << end_time - begin_time << std::endl;
+}
+
+void Flyscene::traceRayThread(int h, int w, int start, int stop, vector<vector<Eigen::Vector3f>>& pixel_data) {
 	// origin of the ray is always the camera center
 	Eigen::Vector3f origin = flycamera.getCenter();
 	Eigen::Vector3f direction;
 
 	// for every pixel shoot a ray from the origin through the pixel coords
-	for (int j = 0; j < image_size[1]; ++j) {
-		for (int i = 0; i < image_size[0]; ++i) {
-			// create a ray from the camera passing through the pixel (i,j)
+	for (int j = start; j < stop; ++j) {
+		for (int i = 0; i < h; ++i) {
 			direction = (flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin).normalized();
-			// launch raytracing for the given ray and write result to pixel data
-			std::thread t1(&Flyscene::traceRay, this, std::ref(origin), std::ref(direction), std::ref(pixel_data[j][i]));
-			t1.join();
+			pixel_data[j][i] = traceRay(origin, direction);
 		}
-		std::cout << "\r" << j << "/" << image_size[1];
+		COUNT++;
 	}
-	// write the ray tracing result to a PPM image
-	Tucano::ImageImporter::writePPMImage("result.ppm", pixel_data);
-	std::cout << " ray tracing done! " << std::endl;
 }
 
-void Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Eigen::Vector3f& color) {
+
+Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
 	// Parameters to keep track of current faces and the closest face
 	float minimum_distance = INFINITY;
 	Tucano::Face minimum_face;
@@ -188,15 +213,12 @@ void Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Eigen::Ve
 	}
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance == INFINITY) {
-		color = BACKGROUND_COLOR;
+		return BACKGROUND_COLOR;
 	}
-	else if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
-		color = BoundingBox::triangleColors.at(faceids[&minimum_face]);
+	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
 	}
-	else {
-		color = calculateColor(minimum_distance, minimum_face, origin, dir);
-	}
-
+	return calculateColor(minimum_distance, minimum_face, origin, dir);
 }
 
 void Flyscene::generateBoundingBoxes() {
