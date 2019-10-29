@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <thread>
-#include <future>
 #include <time.h>
 
 #include "BoundingBox.h"
