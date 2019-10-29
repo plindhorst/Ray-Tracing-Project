@@ -126,9 +126,9 @@ private:
 	bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
 
 public:
-	static const bool RENDER_BOUNDINGBOXES = false;
+	static const bool RENDER_BOUNDINGBOXES = true;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
-	static const int MIN_FACES = 200;
+	static const int MIN_FACES = 3000;
 
 	const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
 	const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);

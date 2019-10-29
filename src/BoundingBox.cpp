@@ -27,6 +27,7 @@ void BoundingBox::reshape() {
 bool BoundingBox::hasFace(Tucano::Face& face) {
 	for (int id : face.vertex_ids) {
 		Eigen::Vector4f vertex = mesh->getVertex(id);
+		float x = vertex(0);
 		if (!hasVertex(vertex)) return false;
 	}
 	return true;
@@ -101,30 +102,41 @@ vector<Tucano::Face*> BoundingBox::outsideFaces() {
 		}
 	}
 	faces = inside;
+	faces.shrink_to_fit();
+	outside.shrink_to_fit();
 	return outside;
 }
 
-BoundingBox& BoundingBox::splitBox() {
+BoundingBox* BoundingBox::splitBox() {
+	Eigen::Vector3f oldLow = low;
+	Eigen::Vector3f oldHigh = high;
+
 	if (width >= height && width >= depth) {
-		//high(0) = averageVertexCoord(0);
-		high(0) = high(0) - width / 2;
+		high(0) = averageVertexCoord(0);
 	}
 	else if (height >= width && height >= depth) {
-		//high(1) = averageVertexCoord(1);
-		high(1) = high(1) - height / 2;
+		high(1) = averageVertexCoord(1);
 	}
 	else {
-		//high(2) = averageVertexCoord(2);
-		high(2) = high(2) - depth / 2;
+		high(2) = averageVertexCoord(2);
 	}
 
 	reshape();
-	BoundingBox* newCube = new BoundingBox(true);
-	newCube->mesh = mesh;
-	newCube->faces = outsideFaces();
-	newCube->fitFaces();
-	fitFaces();
-	return *newCube;
+	std::vector<Tucano::Face*> outsideFaces = this->outsideFaces();
+	bool impossible = (faces.size()==0);
+	if (!impossible) {
+		BoundingBox* newCube = new BoundingBox(true);
+		newCube->faces = outsideFaces;
+		newCube->fitFaces();
+		fitFaces();
+		return newCube;
+	}
+	else {
+		low = oldLow;
+		high = oldHigh;
+		reshape();
+		return this;
+	}
 }
 
 float BoundingBox::averageVertexCoord(int axis) {

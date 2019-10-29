@@ -16,7 +16,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/toy.obj");
+		"resources/models/dodgeColorTest.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -211,10 +211,13 @@ void Flyscene::generateBoundingBoxes() {
 	while (notDone) {
 		notDone = false;
 		vector<BoundingBox*> current = BoundingBox::boxes;
+		std::cout << "Now have " << current.size() << " boxes." << std::endl;
 		for (BoundingBox* box : current) {
 			if (box->getNumberOfFaces() > MIN_FACES) {
-				box->splitBox();
-				notDone = true;
+				BoundingBox* newBox = box->splitBox();
+				if (box!=newBox) {
+					notDone = true;
+				}
 			}
 		}
 	}

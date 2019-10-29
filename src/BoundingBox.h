@@ -53,7 +53,7 @@ class BoundingBox
 	vector<Tucano::Face*> outsideFaces();
 
 	//	Split this box along longest axis, and create a new cube to cover all lost faces.
-	BoundingBox& splitBox();
+	BoundingBox* splitBox();
 
 	float averageVertexCoord(int axis);
 
