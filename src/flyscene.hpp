@@ -70,8 +70,8 @@ public:
 				std::cout << " Wrong color code " << std::endl;
 			}
 		}
-		while (!(l == "s" || l == "p") ) {
-			std::cout << " Do you want a spherical or a point light? (s or p)" << std::endl;
+		while (!(l == "s" || l == "p" || l == "d") ) {
+			std::cout << " Do you want a spherical, directional or a point light? (s, d or p)" << std::endl;
 			std::cin >> l;
 			while (std::cin.fail()) {
 				std::cout << "Error" << std::endl;
@@ -80,13 +80,31 @@ public:
 				std::cin >> l;
 			}
 		}
-		std::pair<Eigen::Vector3f, Eigen::Vector3f> light = std::pair<Eigen::Vector3f, Eigen::Vector3f>(flycamera.getCenter(), Eigen::Vector3f(r, g, b));
-		if (l == "s") {
-			// create spherical lights out of point light
-			sphericalLight(light, 0.15, nSphereLights);
+		if (l == "s" || l == "p") {
+			std::pair<Eigen::Vector3f, Eigen::Vector3f> light = std::pair<Eigen::Vector3f, Eigen::Vector3f>(flycamera.getCenter(), Eigen::Vector3f(r, g, b));
+			if (l == "s") {
+				// create spherical lights out of point light
+				sphericalLight(light, 0.15, nSphereLights);
+				light.second /= (nSphereLights + 1);
+			}
+
+			lights.push_back(light);
 		}
 
-		lights.push_back(light);
+		if (l == "d") {
+			std::cout << " What direction do you want the directional light to point at? " << std::endl;
+			bool rightDir = false;
+			float x, y, z;
+			std::cout << " What colour do you want? " << std::endl;
+			std::cin >> x >> y >> z;
+			while (std::cin.fail()) {
+				std::cout << "Error" << std::endl;
+				std::cin.clear();
+				std::cin.ignore(256, '\n');
+				std::cin >> x >> y >> z;
+			}
+			std::pair<Eigen::Vector3f, Eigen::Vector3f> light = std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(x, y, z), Eigen::Vector3f(r, g, b));
+		}
 		std::cout << "Created a light with vector: (" << r << ", " << g << ", " << b << ")" << std::endl;
 	}
 
@@ -120,7 +138,7 @@ public:
 
   void sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> lightLoc, float radius, int nLightpoints);
 
-  Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, std::pair<Eigen::Vector3f, Eigen::Vector3f> light, Eigen::Vector3f& pointP);
+  Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f lightDirection, Eigen::Vector3f light_intensity, Eigen::Vector3f& pointP);
 
   Eigen::Vector3f calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP);
 
@@ -143,6 +161,9 @@ private:
 
 	// light sources for ray tracing
 	vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> lights;
+
+	// the directional lights
+	vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> dirLights;
 
 	// Scene light represented as a camera
 	Tucano::Camera scene_light;

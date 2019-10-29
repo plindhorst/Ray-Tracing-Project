@@ -321,8 +321,7 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 }
 
 //Call function in calculate color, if it returns true => pixel should be black/ambiant. If it returns false => the pixel should have a color.
-bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightLoc) {
-	Eigen::Vector3f lightDirection = -(pointP - lightLoc).normalized();
+bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightDirection) {
 	Tucano::Face current_face;
 	Eigen::Vector3f inter = pointP + 0.001*(lightDirection);
 
@@ -347,15 +346,14 @@ void Flyscene::sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> light,
 		float x = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float y = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float z = (-radius + (rand() / (RAND_MAX / (radius * 2))));
-		lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(lightLoc.x() + x, lightLoc.y() + y, lightLoc.z() + z), light.second));
+		lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(lightLoc.x() + x, lightLoc.y() + y, lightLoc.z() + z), light.second/(nLightpoints+1)));
 	}
 }
 
 
 //Call function in calculateColor
-Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, std::pair<Eigen::Vector3f, Eigen::Vector3f> light, Eigen::Vector3f& pointP) {
-	Eigen::Vector3f lightLoc = light.first;
-	if (shadow(pointP, lightLoc)) {
+Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f lightDirection, Eigen::Vector3f light_intensity, Eigen::Vector3f& pointP) {
+	if (shadow(pointP, lightDirection)) {
 		return Eigen::Vector3f(0.0, 0.0, 0.0);
 	}
 	if (minimum_face.material_id != -1) {
@@ -369,10 +367,8 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 	}
 
 	Eigen::Vector3f normal = minimum_face.normal.normalized();
-	Eigen::Vector3f lightDirection = -(pointP - lightLoc).normalized();
 	Eigen::Vector3f lightReflection = (lightDirection - 2 * (normal.dot(lightDirection)) * normal);
 	Eigen::Vector3f eyeDirection = (origin - pointP).normalized();
-	Eigen::Vector3f light_intensity = light.second;
 	
 	Eigen::Vector3f ambient = Eigen::Vector3f(light_intensity.x() * ka.x(), light_intensity.y() * ka.y(), light_intensity.z() * ka.z());
 	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(lightDirection.dot(normal), 0.f);
@@ -385,8 +381,13 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 //Call function in traceRay
 Eigen::Vector3f Flyscene::calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP) {
 	Eigen::Vector3f sumColor = Eigen::Vector3f(0.0, 0.0, 0.0);
+	Eigen::Vector3f sumColorDir = Eigen::Vector3f(0.0, 0.0, 0.0);
 	for (int i = 0; i < lights.size(); i++) {
-		sumColor = sumColor + calcSingleColor(minimum_face, origin, lights[i], pointP);
+		Eigen::Vector3f lightDirection = -(pointP - lights[i].first).normalized();
+		sumColor += calcSingleColor(minimum_face, origin, lightDirection, lights[i].second, pointP);
 	}
-	return sumColor / lights.size();
+	for (int i = 0; i < dirLights.size(); i++) {
+		sumColor += calcSingleColor(minimum_face, origin, dirLights[i].first, dirLights[i].second, pointP);
+	}
+	return sumColor/(lights.size() + dirLights.size());
 }
