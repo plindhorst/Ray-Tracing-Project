@@ -78,7 +78,7 @@ public:
   /**
   *Check if light is obstructed
   */
-  bool shadow(Eigen::Vector3f& dest, Eigen::Vector3f& light);
+  bool shadow(Tucano::Face minimum_face, Eigen::Vector3f& dest, Eigen::Vector3f& light);
 
   void sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLightpoints);
 

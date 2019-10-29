@@ -152,7 +152,7 @@ void Flyscene::raytraceScene(int width, int height) {
 	// create spherical lights out of point lights
 	vector<Eigen::Vector3f> lightsDup = lights;
 	for (int i = 0; i < lightsDup.size(); i++) {
-		sphericalLight(lightsDup[i], 0.15, nSphereLights);
+		sphericalLight(lightsDup[i], 1, nSphereLights);
 	}
 
 	// for every pixel shoot a ray from the origin through the pixel coords
@@ -327,7 +327,7 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 }
 
 //Call function in calculate color, if it returns true => pixel should be black/ambiant. If it returns false => the pixel should have a color.
-bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightLoc) {
+bool Flyscene::shadow(Tucano::Face minimum_face, Eigen::Vector3f& pointP, Eigen::Vector3f& lightLoc) {
 	Eigen::Vector3f lightDirection = -(pointP - lightLoc).normalized();
 	Tucano::Face current_face;
 	Eigen::Vector3f inter = pointP + 0.001*(lightDirection);
@@ -360,7 +360,7 @@ void Flyscene::sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLigh
 //Call function in calculateColor
 Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP) {
 	
-	if (shadow(pointP, lightLoc)) {
+	if (shadow(minimum_face, pointP, lightLoc)) {
 		return Eigen::Vector3f(0.0, 0.0, 0.0);
 	}
 	if (minimum_face.material_id != -1) {
