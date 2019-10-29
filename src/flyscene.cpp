@@ -32,7 +32,7 @@ void Flyscene::initialize(int width, int height) {
 	lightrep.setSize(0.15);
 
 	// create a first ray-tracing light source at some random position
-	lights.push_back(Eigen::Vector3f(-0.5, 2.0, 3.0));
+	lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(-0.5, 2.0, 3.0), Eigen::Vector3f(0,0,0)));
 
 	// scale the camera representation (frustum) for the ray debug
 	camerarep.shapeMatrix()->scale(0.2);
@@ -79,7 +79,7 @@ void Flyscene::paintGL(void) {
 
 	// position the scene light at the last ray-tracing light source
 	scene_light.resetViewMatrix();
-	scene_light.viewMatrix()->translate(-lights.back());
+	scene_light.viewMatrix()->translate(-lights.back().first);
 
 	// render the scene using OpenGL and one light source
 	phong.render(mesh, flycamera, scene_light);
@@ -91,7 +91,7 @@ void Flyscene::paintGL(void) {
 	// render ray tracing light sources as yellow spheres
 	for (int i = 0; i < lights.size(); ++i) {
 		lightrep.resetModelMatrix();
-		lightrep.modelMatrix()->translate(lights[i]);
+		lightrep.modelMatrix()->translate(lights[i].first);
 		lightrep.render(flycamera, scene_light);
 	}
 
@@ -148,12 +148,6 @@ void Flyscene::raytraceScene(int width, int height) {
 	// origin of the ray is always the camera center
 	Eigen::Vector3f origin = flycamera.getCenter();
 	Eigen::Vector3f direction;
-
-	// create spherical lights out of point lights
-	vector<Eigen::Vector3f> lightsDup = lights;
-	for (int i = 0; i < lightsDup.size(); i++) {
-		sphericalLight(lightsDup[i], 0.15, nSphereLights);
-	}
 
 	// for every pixel shoot a ray from the origin through the pixel coords
 	for (int j = 0; j < image_size[1]; ++j) {
@@ -347,19 +341,20 @@ bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightLoc) {
 }
 
 //Call function in rayTraceScene before pixel loop
-void Flyscene::sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLightpoints) {
+void Flyscene::sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> light, float radius, int nLightpoints) {
+	Eigen::Vector3f lightLoc = light.first;
 	for (int i = 0; i < nLightpoints; i++) {
 		float x = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float y = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float z = (-radius + (rand() / (RAND_MAX / (radius * 2))));
-		lights.push_back(Eigen::Vector3f(lightLoc.x() + x, lightLoc.y() + y, lightLoc.z() + z));
+		lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(lightLoc.x() + x, lightLoc.y() + y, lightLoc.z() + z), light.second));
 	}
 }
 
 
 //Call function in calculateColor
-Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP) {
-	
+Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, std::pair<Eigen::Vector3f, Eigen::Vector3f> light, Eigen::Vector3f& pointP) {
+	Eigen::Vector3f lightLoc = light.first;
 	if (shadow(pointP, lightLoc)) {
 		return Eigen::Vector3f(0.0, 0.0, 0.0);
 	}
@@ -377,7 +372,7 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 	Eigen::Vector3f lightDirection = -(pointP - lightLoc).normalized();
 	Eigen::Vector3f lightReflection = (lightDirection - 2 * (normal.dot(lightDirection)) * normal);
 	Eigen::Vector3f eyeDirection = (origin - pointP).normalized();
-	Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
+	Eigen::Vector3f light_intensity = light.second;
 	
 	Eigen::Vector3f ambient = Eigen::Vector3f(light_intensity.x() * ka.x(), light_intensity.y() * ka.y(), light_intensity.z() * ka.z());
 	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(lightDirection.dot(normal), 0.f);

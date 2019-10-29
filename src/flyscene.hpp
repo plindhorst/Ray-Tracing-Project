@@ -50,7 +50,45 @@ public:
 	/**
 	 * @brief Add a new light source
 	 */
-	void addLight(void) { lights.push_back(flycamera.getCenter()); }
+	void addLight() {
+		bool rightColor = false;
+		float r, g, b;
+		std::string l = "";
+		while (!rightColor) {
+			std::cout << " What colour do you want? " << std::endl;
+			std::cin >> r >> g >> b;
+			while (std::cin.fail()) {
+				std::cout << "Error" << std::endl;
+				std::cin.clear();
+				std::cin.ignore(256, '\n');
+				std::cin >> r >> g >> b;
+			}
+			if ((0 <= r <= 1) && (0 <= g <= 1) && (0 <= b <= 1)) {
+				rightColor = true;
+			}
+			else {
+				std::cout << " Wrong color code " << std::endl;
+			}
+		}
+		while (!(l == "s" || l == "p") ) {
+			std::cout << " Do you want a spherical or a point light? (s or p)" << std::endl;
+			std::cin >> l;
+			while (std::cin.fail()) {
+				std::cout << "Error" << std::endl;
+				std::cin.clear();
+				std::cin.ignore(256, '\n');
+				std::cin >> l;
+			}
+		}
+		std::pair<Eigen::Vector3f, Eigen::Vector3f> light = std::pair<Eigen::Vector3f, Eigen::Vector3f>(flycamera.getCenter(), Eigen::Vector3f(r, g, b));
+		if (l == "s") {
+			// create spherical lights out of point light
+			sphericalLight(light, 0.15, nSphereLights);
+		}
+
+		lights.push_back(light);
+		std::cout << "Created a light with vector: (" << r << ", " << g << ", " << b << ")" << std::endl;
+	}
 
 	/**
 	 * @brief Create a debug ray at the current camera location and passing
@@ -80,9 +118,9 @@ public:
   */
   bool shadow(Eigen::Vector3f& dest, Eigen::Vector3f& light);
 
-  void sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLightpoints);
+  void sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> lightLoc, float radius, int nLightpoints);
 
-  Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP);
+  Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, std::pair<Eigen::Vector3f, Eigen::Vector3f> light, Eigen::Vector3f& pointP);
 
   Eigen::Vector3f calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP);
 
@@ -104,7 +142,7 @@ private:
 	Tucano::Shapes::Sphere lightrep;
 
 	// light sources for ray tracing
-	vector<Eigen::Vector3f> lights;
+	vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> lights;
 
 	// Scene light represented as a camera
 	Tucano::Camera scene_light;
@@ -133,7 +171,7 @@ public:
 	const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
 	const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);
 
-	const int nSphereLights = 30;
+	const int nSphereLights = 0;
 
 	// Default Material
 	Eigen::Vector3f ka = Eigen::Vector3f(0.2, 0.2, 0.2);
