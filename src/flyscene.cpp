@@ -208,15 +208,18 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 
 	// RECURSIVELY CALCULATE COLOR
 	// Direct color component
-	Eigen::Vector3f direct_color = calculateColor(minimum_face, origin, dir);
+	Eigen::Vector3f direct_color = calculateColor(minimum_face, origin, minimum_distance_and_point.first);
 
 	// Material properties
 	float transparency = materials[minimum_face.material_id].getOpticalDensity();
-	Eigen::Vector3f ks = materials[minimum_face.material_id].getSpecular();
+	if (minimum_face.material_id != -1) {
+		ks = materials[minimum_face.material_id].getSpecular();
+	}
 
 	// Reflected component
 	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal.normalized());
-	Eigen::Vector3f reflected_color = traceRay(minimum_distance_and_point.first, reflected_ray, depth + 1);
+	Eigen::Vector3f offset_origin = minimum_distance_and_point.first + (0.001 * reflected_ray);
+	Eigen::Vector3f reflected_color = traceRay(offset_origin, reflected_ray, depth + 1);
 
 	// Refracted component
 	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
