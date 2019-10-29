@@ -22,12 +22,14 @@ class BoundingBox
 	float height;
 	float depth;
 	Eigen::Vector3f color = Eigen::Vector3f(1,1,1);
-	Tucano::Shapes::Box box = NULL;
+	Tucano::Shapes::Box* box = nullptr;
 	// All faces that should be inside this cube.
 	vector<Tucano::Face*> faces;
 
 	//	If remember, stores pointer to cube, will be deconstructed with class deconstructor.
 	BoundingBox(bool remember);
+
+	~BoundingBox();
 
 	// 	Delete all boxes that have been remembered.
 	static void deconstruct();

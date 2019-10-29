@@ -13,6 +13,7 @@ void BoundingBox::deconstruct() {
 	for (BoundingBox* c : boxes) {
 		delete c;
 	}
+	boxes.clear();
 }
 
 void BoundingBox::reshape() {
@@ -155,7 +156,7 @@ int BoundingBox::getNumberOfFaces() {
 }
 
 void BoundingBox::generateShape() {
-	box = Tucano::Shapes::Box();
+	box = new Tucano::Shapes::Box();
 	Eigen::Affine3f modelMatrix = Eigen::Affine3f::Identity();
 	Eigen::Affine3f meshMatrix = mesh->getShapeModelMatrix();
 	Eigen::Vector3f tempLow = meshMatrix * low;
@@ -164,11 +165,15 @@ void BoundingBox::generateShape() {
 	modelMatrix(0, 0) = tempHigh(0) - tempLow(0);
 	modelMatrix(1, 1) = tempHigh(1) - tempLow(1);
 	modelMatrix(2, 2) = tempHigh(2) - tempLow(2);
-	box.setModelMatrix(modelMatrix);
-	box.setColor(Eigen::Vector4f(color(0), color(1), color(2), 1));
+	box->setModelMatrix(modelMatrix);
+	box->setColor(Eigen::Vector4f(color(0), color(1), color(2), 1));
 }
 
 void BoundingBox::render(Tucano::Flycamera& flyCamera, Tucano::Camera& scene_light) {
 	if (faces.size() <= 0) { return; }
-	box.render(flyCamera, scene_light);
+	box->render(flyCamera, scene_light);
+}
+
+BoundingBox::~BoundingBox() {
+	delete box;
 }
