@@ -16,7 +16,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/cube.obj");
+		"resources/models/toy.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -373,7 +373,7 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 	}
 
 	Eigen::Vector3f normal = minimum_face.normal.normalized();
-	Eigen::Vector3f lightDirection = (pointP - lightLoc).normalized();
+	Eigen::Vector3f lightDirection = -(pointP - lightLoc).normalized();
 	Eigen::Vector3f lightReflection = (lightDirection - 2 * (normal.dot(lightDirection)) * normal);
 	Eigen::Vector3f eyeDirection = (origin - pointP).normalized();
 	Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
