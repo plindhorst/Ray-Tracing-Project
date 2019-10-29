@@ -14,12 +14,9 @@ void Flyscene::initialize(int width, int height) {
 	flycamera.setPerspectiveMatrix(60.0, width / (float)height, 0.1f, 100.0f);
 	flycamera.setViewport(Eigen::Vector2f((float)width, (float)height));
 
-  // load the OBJ file and materials
-  Tucano::MeshImporter::loadObjFile(mesh, materials,
-                                    "resources/models/cube.obj");
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/toy.obj");
+		"resources/models/cube.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -331,15 +328,15 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 
 //Call function in calculate color, if it returns true => pixel should be black/ambiant. If it returns false => the pixel should have a color.
 bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightLoc) {
-	Eigen::Vector3f lightDirection = (pointP - lightLoc).normalized();
+	Eigen::Vector3f lightDirection = -(pointP - lightLoc).normalized();
 	Tucano::Face current_face;
 
 	// Loop through all Bounding boxes.
 	for (BoundingBox* box : BoundingBox::boxes) {
-		if (intersectBox(lightLoc, lightDirection, *box)) {
+		if (intersectBox(pointP, lightDirection, *box)) {
 			for (int i = 0; i < box->faces.size(); i++) {
 				current_face = *box->faces[i];
-				if (calculateDistance(lightLoc, lightDirection, current_face).second >= 0) {
+				if (calculateDistance(pointP, lightDirection, current_face).second >= 0) {
 					return true;
 				}
 			}
