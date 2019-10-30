@@ -13,6 +13,7 @@ class BoundingBox
 	static std::vector<BoundingBox*> boxes;
 	static std::vector<Eigen::Vector3f> triangleColors;
 	static Tucano::Mesh* mesh;
+	bool failed[3] = {false, false, false};
 
 	// Raw Coördinates (Object Space)
 	Eigen::Vector3f low;
@@ -22,12 +23,14 @@ class BoundingBox
 	float height;
 	float depth;
 	Eigen::Vector3f color = Eigen::Vector3f(1,1,1);
-	Tucano::Shapes::Box box = NULL;
+	Tucano::Shapes::Box* box = nullptr;
 	// All faces that should be inside this cube.
 	vector<Tucano::Face*> faces;
 
 	//	If remember, stores pointer to cube, will be deconstructed with class deconstructor.
 	BoundingBox(bool remember);
+
+	~BoundingBox();
 
 	// 	Delete all boxes that have been remembered.
 	static void deconstruct();
@@ -51,7 +54,7 @@ class BoundingBox
 	vector<Tucano::Face*> outsideFaces();
 
 	//	Split this box along longest axis, and create a new cube to cover all lost faces.
-	BoundingBox& splitBox();
+	BoundingBox* splitBox();
 
 	float averageVertexCoord(int axis);
 
