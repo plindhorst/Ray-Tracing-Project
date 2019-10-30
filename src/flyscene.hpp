@@ -50,81 +50,7 @@ public:
 	/**
 	 * @brief Add a new light source
 	 */
-	void addLight() {
-		bool rightColor = false;
-		float r, g, b;
-		std::string l = "";
-		while (!rightColor) {
-			std::cout << " What colour do you want in rgb format? (Enter three numbers seperately between 1 and 0)" << std::endl;
-			std::cin >> r >> g >> b;
-			while (std::cin.fail()) {
-				std::cout << "Error" << std::endl;
-				std::cin.clear();
-				std::cin.ignore(256, '\n');
-				std::cin >> r >> g >> b;
-			}
-			if ((0 <= r <= 1) && (0 <= g <= 1) && (0 <= b <= 1)) {
-				rightColor = true;
-			}
-			else {
-				std::cout << " Wrong color code " << std::endl;
-			}
-		}
-		while (!(l == "s" || l == "p" || l == "d") ) {
-			std::cout << " Do you want a spherical, directional or a point light? (s, d or p)" << std::endl;
-			std::cin >> l;
-			while (std::cin.fail()) {
-				std::cout << "Error" << std::endl;
-				std::cin.clear();
-				std::cin.ignore(256, '\n');
-				std::cin >> l;
-			}
-		}
-		if (l == "s" || l == "p") {
-			std::pair<Eigen::Vector3f, Eigen::Vector3f> light = std::pair<Eigen::Vector3f, Eigen::Vector3f>(flycamera.getCenter(), Eigen::Vector3f(r, g, b));
-			if (l == "s") {
-				// create spherical lights out of point light
-				string radius;
-				std::cout << "What Radius?" << std::endl;
-				std::cin >> radius;
-				while (std::cin.fail()) {
-					std::cout << "Error" << std::endl;
-					std::cin.clear();
-					std::cin.ignore(256, '\n');
-					std::cin >> radius;
-				}
-				string lights;
-				std::cout << "How many point light for approximations?" << std::endl;
-				std::cin >> lights;
-				while (std::cin.fail()) {
-					std::cout << "Error" << std::endl;
-					std::cin.clear();
-					std::cin.ignore(256, '\n');
-					std::cin >> lights;
-				}
-				int Nlights = std::stoi(lights);
-				sphericalLight(light, std::stof(radius), Nlights);
-				light.second /= (Nlights + 1);
-			}
-
-			lights.push_back(light);
-		}
-
-		if (l == "d") {
-			std::cout << " What direction do you want the directional light to point at? " << std::endl;
-			bool rightDir = false;
-			float x, y, z;
-			std::cin >> x >> y >> z;
-			while (std::cin.fail()) {
-				std::cout << "Error" << std::endl;
-				std::cin.clear();
-				std::cin.ignore(256, '\n');
-				std::cin >> x >> y >> z;
-			}
-			std::pair<Eigen::Vector3f, Eigen::Vector3f> light = std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(x, y, z), Eigen::Vector3f(r, g, b));
-		}
-		std::cout << "Created a light with vector: (" << r << ", " << g << ", " << b << ")" << std::endl;
-	}
+	void addLight();
 
 	/**
 	 * @brief Create a debug ray at the current camera location and passing
@@ -181,12 +107,14 @@ private:
 	// a frustum to represent the camera in the scene
 	Tucano::Shapes::Sphere lightrep;
 
+	Tucano::Shapes::Arrow dirLightrep;
+
 	public: // so we can remove all lights
 	// light sources for ray tracing
 	vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> lights;
 
 	// the directional lights
-	vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> dirLights;
+	vector<std::tuple<Eigen::Vector3f, Eigen::Vector3f, Eigen::Quaternion<float>>> dirLights;
 
 	private:
 	// Scene light represented as a camera

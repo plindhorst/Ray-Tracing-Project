@@ -18,7 +18,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/"+ OBJECT_NAME);
+		"resources/models/" + OBJECT_NAME);
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -33,8 +33,11 @@ void Flyscene::initialize(int width, int height) {
 	lightrep.setColor(Eigen::Vector4f(1.0, 1.0, 0.0, 1.0));
 	lightrep.setSize(0.15);
 
+	dirLightrep.setColor(Eigen::Vector4f(1, 1, 0, 1));
+	dirLightrep.setSize(0.15);
+
 	// create a first ray-tracing light source at some random position
-	lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(-0.5, 2.0, 3.0), Eigen::Vector3f(0,0,0)));
+	lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(-0.5, 2.0, 3.0), Eigen::Vector3f(0, 0, 0)));
 
 	// scale the camera representation (frustum) for the ray debug
 	camerarep.shapeMatrix()->scale(0.2);
@@ -96,6 +99,17 @@ void Flyscene::paintGL(void) {
 		lightrep.modelMatrix()->translate(lights[i].first);
 		lightrep.render(flycamera, scene_light);
 	}
+	for (int i = 0; i < dirLights.size(); ++i) {
+
+		dirLightrep.resetModelMatrix();
+		Eigen::Affine3f m = dirLightrep.getModelMatrix();
+		m(2, 2) = -1;
+		dirLightrep.setModelMatrix(m);
+		Eigen::Quaternion<float> rotation = get<2>(dirLights[i]);
+		dirLightrep.modelMatrix()->rotate(rotation);
+		dirLightrep.modelMatrix()->translate(Eigen::Vector3f(0, 1, 0));
+		dirLightrep.render(flycamera, scene_light);
+	}
 
 	// render coordinate system at lower right corner
 	flycamera.renderAtCorner();
@@ -132,6 +146,74 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
 }
 
+void Flyscene::addLight() {
+	bool rightColor = false;
+	float r, g, b;
+	std::string l = "";
+	while (!rightColor) {
+		std::cout << " What colour do you want in rgb format? (Enter three numbers seperately between 1 and 0)" << std::endl;
+		std::cin >> r >> g >> b;
+		while (std::cin.fail()) {
+			std::cout << "Error" << std::endl;
+			std::cin.clear();
+			std::cin.ignore(256, '\n');
+			std::cin >> r >> g >> b;
+		}
+		if ((0 <= r <= 1) && (0 <= g <= 1) && (0 <= b <= 1)) {
+			rightColor = true;
+		}
+		else {
+			std::cout << " Wrong color code " << std::endl;
+		}
+	}
+	while (!(l == "s" || l == "p" || l == "d")) {
+		std::cout << " Do you want a spherical, directional or a point light? (s, d or p)" << std::endl;
+		std::cin >> l;
+		while (std::cin.fail()) {
+			std::cout << "Error" << std::endl;
+			std::cin.clear();
+			std::cin.ignore(256, '\n');
+			std::cin >> l;
+		}
+	}
+	if (l == "s" || l == "p") {
+		std::pair<Eigen::Vector3f, Eigen::Vector3f> light = std::pair<Eigen::Vector3f, Eigen::Vector3f>(flycamera.getCenter(), Eigen::Vector3f(r, g, b));
+		if (l == "s") {
+			// create spherical lights out of point light
+			string radius;
+			std::cout << "What Radius?" << std::endl;
+			std::cin >> radius;
+			while (std::cin.fail()) {
+				std::cout << "Error" << std::endl;
+				std::cin.clear();
+				std::cin.ignore(256, '\n');
+				std::cin >> radius;
+			}
+			string lights;
+			std::cout << "How many point light for approximations?" << std::endl;
+			std::cin >> lights;
+			while (std::cin.fail()) {
+				std::cout << "Error" << std::endl;
+				std::cin.clear();
+				std::cin.ignore(256, '\n');
+				std::cin >> lights;
+			}
+			int Nlights = std::stoi(lights);
+			sphericalLight(light, std::stof(radius), Nlights);
+			light.second /= (Nlights + 1);
+		}
+
+		lights.push_back(light);
+	}
+
+	if (l == "d") {
+		Eigen::Vector3f direction = flycamera.screenToWorld(Eigen::Vector2f(flycamera.getViewport()(2) / 2, flycamera.getViewport()(3) / 2));
+		std::tuple<Eigen::Vector3f, Eigen::Vector3f, Eigen::Quaternion<float>> light = std::tuple<Eigen::Vector3f, Eigen::Vector3f, Eigen::Quaternion<float>>(direction, Eigen::Vector3f(r, g, b), flycamera.getRotationMatrix());
+		dirLights.push_back(light);
+	}
+	std::cout << "Created a light with color spectrum (r,g,b): (" << r << ", " << g << ", " << b << ")" << std::endl;
+}
+
 void Flyscene::raytraceScene(int width, int height) {
 	std::cout << "ray tracing ..." << std::endl;
 	time_t begin_time = time(NULL);
@@ -160,7 +242,7 @@ void Flyscene::raytraceScene(int width, int height) {
 	int start = 0;
 	int pixels = image_size[1] / THREADS;
 	for (int i = 0; i < THREADS; i++) {
-		threads.emplace_back(&Flyscene::traceRayThread, this, image_size[1], image_size[0],start, start + pixels, std::ref(pixel_data));
+		threads.emplace_back(&Flyscene::traceRayThread, this, image_size[1], image_size[0], start, start + pixels, std::ref(pixel_data));
 		start += pixels;
 	}
 
@@ -236,7 +318,7 @@ void Flyscene::generateBoundingBoxes() {
 	box->fitMesh();
 
 	bool notDone = true;
-	while (notDone&&BoundingBox::boxes.size()<MAX_BOXES) {
+	while (notDone && BoundingBox::boxes.size() < MAX_BOXES) {
 		notDone = false;
 		vector<BoundingBox*> current = BoundingBox::boxes;
 		std::cout << "Now have " << current.size() << " boxes." << std::endl;
@@ -384,7 +466,7 @@ void Flyscene::sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> light,
 		float x = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float y = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float z = (-radius + (rand() / (RAND_MAX / (radius * 2))));
-		lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(lightLoc.x() + x, lightLoc.y() + y, lightLoc.z() + z), light.second/(nLightpoints+1)));
+		lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(lightLoc.x() + x, lightLoc.y() + y, lightLoc.z() + z), light.second / (nLightpoints + 1)));
 	}
 }
 
@@ -407,7 +489,7 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 	Eigen::Vector3f normal = minimum_face.normal.normalized();
 	Eigen::Vector3f lightReflection = (lightDirection - 2 * (normal.dot(lightDirection)) * normal);
 	Eigen::Vector3f eyeDirection = (origin - pointP).normalized();
-	
+
 	Eigen::Vector3f ambient = Eigen::Vector3f(light_intensity.x() * ka.x(), light_intensity.y() * ka.y(), light_intensity.z() * ka.z());
 	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(lightDirection.dot(normal), 0.f);
 	Eigen::Vector3f specular = Eigen::Vector3f(light_intensity.x() * ks.x(), light_intensity.y() * ks.y(), light_intensity.z() * ks.z()) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);
@@ -425,7 +507,7 @@ Eigen::Vector3f Flyscene::calculateColor(Tucano::Face minimum_face, Eigen::Vecto
 		sumColor += calcSingleColor(minimum_face, origin, lightDirection, lights[i].second, pointP);
 	}
 	for (int i = 0; i < dirLights.size(); i++) {
-		sumColor += calcSingleColor(minimum_face, origin, dirLights[i].first, dirLights[i].second, pointP);
+		sumColor += calcSingleColor(minimum_face, origin, get<0>(dirLights[i]), get<1>(dirLights[i]), pointP);
 	}
 	return Eigen::Vector3f(min(sumColor.x(), 1.f), min(sumColor.y(), 1.f), min(sumColor.z(), 1.f));
 }
