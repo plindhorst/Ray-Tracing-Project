@@ -464,7 +464,7 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 		transparency = material.getDissolveFactor();
 	}
 
-	Eigen::Vector3f normal = interpolateNormal(minimum_face, PointP);
+	Eigen::Vector3f normal = interpolateNormal(minimum_face, pointP);
 	Eigen::Vector3f lightReflection = (lightDirection - 2 * (normal.dot(lightDirection)) * normal);
 	Eigen::Vector3f eyeDirection = (origin - pointP).normalized();
 
@@ -481,9 +481,9 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 	Returns an interpolated normal of the point P on the face. Returns nullvector if point does not lie on the face.
 */
 Eigen::Vector3f Flyscene::interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP) {
-	Eigen::Vector3f vert0 = mesh.getVertex(face.vertex_ids[0]);
-	Eigen::Vector3f vert1 = mesh.getVertex(face.vertex_ids[1]);
-	Eigen::Vector3f vert2 = mesh.getVertex(face.vertex_ids[2]);
+	Eigen::Vector3f vert0 = mesh.getVertex(face.vertex_ids[0]).head<3>();
+	Eigen::Vector3f vert1 = mesh.getVertex(face.vertex_ids[1]).head<3>();
+	Eigen::Vector3f vert2 = mesh.getVertex(face.vertex_ids[2]).head<3>();
 	Eigen::Vector3f facenormal = face.normal.normalized();
 
 	Eigen::Vector3f edge0 = vert1 - vert0;
