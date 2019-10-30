@@ -344,9 +344,26 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	// Direct color component
 	Eigen::Vector3f direct_color = calculateColor(minimum_face, origin, interPoint);
 
+	// Material properties
+	float transparency = materials[minimum_face.material_id].getOpticalDensity();
+	if (minimum_face.material_id != -1) {
+		ks = materials[minimum_face.material_id].getSpecular();
+	}
 
-	Eigen::Vector3f reflected_color = calculateReflectColor(minimum_face, interPoint, origin, dir, depth);
-	return direct_color + reflected_color.cwiseProduct(ks);
+	// Reflected component
+	Eigen::Vector3f reflected_ray = reflect(dir.normalized(), minimum_face.normal.normalized());
+	Eigen::Vector3f offset_reflection = interPoint + (0.001 * reflected_ray);
+	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
+
+	// Refracted component
+	//if (transparency != 0) {
+	//	Eigen::Vector3f refracted_ray = refract(dir.normalized(), minimum_face);
+	//	Eigen::Vector3f offset_refraction = interPoint + (0.001 * refracted_ray);
+	//	Eigen::Vector3f refracted_color = traceRay(offset_refraction, refracted_ray, depth + 1);
+	//}
+
+	// Add all colors
+	return (1 - transparency) * (direct_color + reflected_color.cwiseProduct(ks));// +transparency * reflected_color;
 }
 
 std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f &origin, Eigen::Vector3f dir) {
