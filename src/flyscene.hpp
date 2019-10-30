@@ -157,7 +157,7 @@ private:
 	Eigen::Vector3f interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP);
 
 public:
-	const string OBJECT_NAME = "dodgeColorTest.obj";
+	const string OBJECT_NAME = "cube.obj";
 
 	static const bool RENDER_BOUNDINGBOXES = false;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
