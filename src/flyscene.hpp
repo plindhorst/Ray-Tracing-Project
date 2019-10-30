@@ -91,10 +91,20 @@ public:
 					std::cout << "Error" << std::endl;
 					std::cin.clear();
 					std::cin.ignore(256, '\n');
-					std::cin >> l;
+					std::cin >> radius;
 				}
-				sphericalLight(light, std::stof(radius), nSphereLights);
-				light.second /= (nSphereLights + 1);
+				string lights;
+				std::cout << "How many point light for approximations?" << std::endl;
+				std::cin >> lights;
+				while (std::cin.fail()) {
+					std::cout << "Error" << std::endl;
+					std::cin.clear();
+					std::cin.ignore(256, '\n');
+					std::cin >> lights;
+				}
+				int Nlights = std::stoi(lights);
+				sphericalLight(light, std::stof(radius), Nlights);
+				light.second /= (Nlights + 1);
 			}
 
 			lights.push_back(light);
@@ -171,12 +181,14 @@ private:
 	// a frustum to represent the camera in the scene
 	Tucano::Shapes::Sphere lightrep;
 
+	public: // so we can remove all lights
 	// light sources for ray tracing
 	vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> lights;
 
 	// the directional lights
 	vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> dirLights;
 
+	private:
 	// Scene light represented as a camera
 	Tucano::Camera scene_light;
 
@@ -210,8 +222,6 @@ public:
 
 	const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
 	const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);
-
-	const int nSphereLights = 12;
 
 	// Default Material
 	Eigen::Vector3f ka = Eigen::Vector3f(0.2, 0.2, 0.2);
