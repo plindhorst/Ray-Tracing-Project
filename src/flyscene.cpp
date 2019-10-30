@@ -160,7 +160,7 @@ void Flyscene::raytraceScene(int width, int height) {
 	int start = 0;
 	int pixels = image_size[1] / THREADS;
 	for (int i = 0; i < THREADS; i++) {
-		threads.emplace_back(&Flyscene::traceRayThread, this, image_size[1], image_size[0],start, start + pixels, std::ref(pixel_data));
+		threads.emplace_back(&Flyscene::traceRayThread, this, image_size[1], image_size[0], start, start + pixels, std::ref(pixel_data));
 		start += pixels;
 	}
 
@@ -272,20 +272,11 @@ Flyscene::~Flyscene() {
 
 
 std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face) {
-	//get vertices and normals of the face
+	//get a vertex and the normal of the face
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 
 	Eigen::Vector4f vec0 = mesh.getVertex(face.vertex_ids[0]);
-	Eigen::Vector4f vec1 = mesh.getVertex(face.vertex_ids[1]);
-	Eigen::Vector4f vec2 = mesh.getVertex(face.vertex_ids[2]);
-
-	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>() / vec0.w());
-	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>() / vec1.w());
-	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>() / vec2.w());
-
-
-
-	//get Normal of the face
+	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>() / vec0.w()); // Note: w should always be 1, which may be assumed.
 	Eigen::Vector3f facenormal = face.normal.normalized();
 
 	//Return false if triangle and direction of ray are the same
@@ -302,21 +293,8 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 	float t = orthProjectionDest / (dir.dot(facenormal));
 	Eigen::Vector3f PointP = origin + t * dir;
 
-	//Inside-out test
-	Eigen::Vector3f edge0 = vert1 - vert0;
-	Eigen::Vector3f edge1 = vert2 - vert1;
-	Eigen::Vector3f edge2 = vert0 - vert2;
-
-	Eigen::Vector3f Inner0 = PointP - vert0;
-	Eigen::Vector3f Inner1 = PointP - vert1;
-	Eigen::Vector3f Inner2 = PointP - vert2;
-
-	float area0 = facenormal.dot(edge0.cross(Inner0));
-	float area1 = facenormal.dot(edge1.cross(Inner1));
-	float area2 = facenormal.dot(edge2.cross(Inner2));
-
 	//If any area is smaller or equal to zero, point is on the wrong side of the edge. 
-	if (area0 < 0 || area1 < 0 || area2 < 0) {
+	if (interpolateNormal(face, PointP).norm() == 0) {
 		std::pair<Eigen::Vector3f, float> pair;
 		pair.second = (float)-1;
 		return pair;
@@ -369,7 +347,7 @@ Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face& m
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 	Eigen::Affine3f lightViewMatrix = scene_light.getViewMatrix();
 
-	Eigen::Vector3f normal = ((mesh.getNormal(minimum_face.vertex_ids[0])+ mesh.getNormal(minimum_face.vertex_ids[1])+ mesh.getNormal(minimum_face.vertex_ids[2]))/3).normalized();
+	Eigen::Vector3f normal = interpolateNormal(minimum_face, PointP);
 
 	Eigen::Vector3f lightDirection = (viewMatrix * lightViewMatrix.inverse() * Eigen::Vector3f(0.0, 0.0, 1.0)).normalized();
 	Eigen::Vector3f lightReflection = (-lightDirection - 2 * (normal.dot(-lightDirection)) * normal).normalized();
@@ -383,4 +361,34 @@ Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face& m
 
 	Eigen::Vector3f color = ambient + diffuse + specular;
 	return color;
+}
+
+
+/**
+	Returns an interpolated normal of the point P on the face. Returns nullvector if point does not lie on the face.
+*/
+Eigen::Vector3f Flyscene::interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP) {
+	Eigen::Vector3f vert0 = mesh.getVertex(face.vertex_ids[0]);
+	Eigen::Vector3f vert1 = mesh.getVertex(face.vertex_ids[1]);
+	Eigen::Vector3f vert2 = mesh.getVertex(face.vertex_ids[2]);
+	Eigen::Vector3f facenormal = face.normal.normalized();
+
+	Eigen::Vector3f edge0 = vert1 - vert0;
+	Eigen::Vector3f edge1 = vert2 - vert1;
+	Eigen::Vector3f edge2 = vert0 - vert2;
+
+	Eigen::Vector3f Inner0 = PointP - vert0;
+	Eigen::Vector3f Inner1 = PointP - vert1;
+	Eigen::Vector3f Inner2 = PointP - vert2;
+
+	float area0 = edge0.cross(Inner0).norm() / 2;
+	float area1 = edge1.cross(Inner1).norm() / 2;
+	float area2 = edge2.cross(Inner2).norm() / 2;
+
+	if (area0 < 0 || area1 < 0 || area2 < 0) {
+		return Eigen::Vector3f(0, 0, 0);
+	}
+
+	float area = edge0.cross(-edge2).norm() / 2;
+	return (mesh.getNormal(face.vertex_ids[0]).normalized() * area1 / area + mesh.getNormal(face.vertex_ids[1]).normalized() * area2 / area + mesh.getNormal(face.vertex_ids[2]).normalized() * area0 / area).normalized();
 }

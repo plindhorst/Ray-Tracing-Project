@@ -121,10 +121,13 @@ private:
 
 	bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
 
+	Eigen::Vector3f interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP);
+
 public:
 	static const bool RENDER_BOUNDINGBOXES = false;
-	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
-	static const int MIN_FACES = 1000;
+	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = true;
+	const int MIN_FACES = 300;
+	const int MAX_BOXES = INT_MAX;
 
 	static const int THREADS = 20;
 
