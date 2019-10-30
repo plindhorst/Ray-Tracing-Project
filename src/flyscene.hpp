@@ -72,6 +72,11 @@ public:
 	 */
 	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth);
 
+	//TO DO:: insert documentation
+	void resetDebugRay();
+
+	std::pair<Tucano::Face, std::pair<Eigen::Vector3f, float>> calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir);
+
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
 
@@ -115,8 +120,11 @@ private:
 	// Scene light represented as a camera
 	Tucano::Camera scene_light;
 
-	/// A very thin cylinder to draw a debug ray
-	Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.1, 1.0, 16, 64);
+
+	const static int max_depth = 2;
+
+	/// A very thin cylinder to draw a debug ray (with the same value as max_depth)
+	Tucano::Shapes::Cylinder ray [max_depth + 1];
 
 	// Scene meshes
 	Tucano::Mesh mesh;
@@ -131,7 +139,6 @@ private:
 
 	bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
 
-	int max_depth = 2;
 
 public:
 	static const bool RENDER_BOUNDINGBOXES = false;
