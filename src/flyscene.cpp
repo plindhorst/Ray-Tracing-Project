@@ -105,9 +105,9 @@ void Flyscene::paintGL(void) {
 		Eigen::Affine3f m = dirLightrep.getModelMatrix();
 		m(2, 2) = -1;
 		dirLightrep.setModelMatrix(m);
+		dirLightrep.modelMatrix()->translate(Eigen::Vector3f(0, 2, 0));
 		Eigen::Quaternion<float> rotation = get<2>(dirLights[i]);
 		dirLightrep.modelMatrix()->rotate(rotation);
-		dirLightrep.modelMatrix()->translate(Eigen::Vector3f(0, 1, 0));
 		dirLightrep.render(flycamera, scene_light);
 	}
 
