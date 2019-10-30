@@ -70,23 +70,31 @@ public:
 	 * @param dest Other point on the ray, usually screen coordinates
 	 * @return a RGB color
 	 */
-	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir);
+	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth);
 
 	void traceRayThread(int h, int w, int start, int stop, vector<vector<Eigen::Vector3f>>& pixel_data);
 
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
 
-  /**
-  *Check if light is obstructed
-  */
-  bool shadow(Eigen::Vector3f& dest, Eigen::Vector3f& light);
+	// TO DO: insert documentation
+	Eigen::Vector3f reflect(Eigen::Vector3f direction, Eigen::Vector3f normal);
 
-  void sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> lightLoc, float radius, int nLightpoints);
+	// TO DO: insert documentation
+	Eigen::Vector3f refract(Eigen::Vector3f direction, Tucano::Face face);
 
-  Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f lightDirection, Eigen::Vector3f light_intensity, Eigen::Vector3f& pointP);
 
-  Eigen::Vector3f calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP);
+	/**
+	*Check if light is obstructed
+	*/
+	bool shadow(Eigen::Vector3f& dest, Eigen::Vector3f& light);
+
+	void sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> lightLoc, float radius, int nLightpoints);
+
+	Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f lightDirection, Eigen::Vector3f light_intensity, Eigen::Vector3f& pointP);
+
+
+	Eigen::Vector3f calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP);
 
 private:
 	int PIXEL_COUNT;
@@ -135,6 +143,8 @@ private:
 	void renderBoundingBoxes();
 
 	bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
+
+	int max_depth = 4;
 
 public:
 	const string OBJECT_NAME = "dodgeColorTest.obj";

@@ -20,7 +20,6 @@ void Flyscene::initialize(int width, int height) {
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
 		"resources/models/" + OBJECT_NAME);
 
-
 	// normalize the model (scale to unit cube and center at origin)
 	mesh.normalizeModelMatrix();
 
@@ -274,14 +273,18 @@ void Flyscene::traceRayThread(int h, int w, int start, int stop, vector<vector<E
 			// create a ray from the camera passing through the pixel (i,j)
 			direction = (flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin).normalized();
 			// launch raytracing for the given ray and write result to pixel data
-			pixel_data[j][i] = traceRay(origin, direction);
+			pixel_data[j][i] = traceRay(origin, direction, 0);
 		}
 		PIXEL_COUNT++;
 	}
 }
 
 
-Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir) {
+Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth) {
+	if (depth == max_depth) {
+		return Eigen::Vector3f(0, 0, 0);
+	}
+	
 	// Parameters to keep track of current faces and the closest face
 	std::pair<Eigen::Vector3f, float> minimum_distance_and_point = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
 	Tucano::Face minimum_face;
@@ -301,14 +304,39 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 			}
 		}
 	}
+
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance_and_point.second == INFINITY) {
-		return BACKGROUND_COLOR;
+		if (depth == 0) {
+			return BACKGROUND_COLOR;
+		}
+		return Eigen::Vector3f(0, 0, 0);
 	}
 	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
 		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
 	}
-	return calculateColor(minimum_face, origin, minimum_distance_and_point.first);
+
+	// RECURSIVELY CALCULATE COLOR
+	// Direct color component
+	Eigen::Vector3f direct_color = calculateColor(minimum_face, origin, minimum_distance_and_point.first);
+
+	// Material properties
+	float transparency = materials[minimum_face.material_id].getOpticalDensity();
+	if (minimum_face.material_id != -1) {
+		ks = materials[minimum_face.material_id].getSpecular();
+	}
+
+	// Reflected component
+	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal.normalized());
+	Eigen::Vector3f offset_reflection = minimum_distance_and_point.first + (0.001 * reflected_ray);
+	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
+
+	// Refracted component
+	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
+	//Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1);
+
+	// Add all colors
+	return direct_color + reflected_color.cwiseProduct(ks);
 }
 
 void Flyscene::generateBoundingBoxes() {
@@ -369,8 +397,6 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>() / vec1.w());
 	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>() / vec2.w());
 
-
-
 	//get Normal of the face
 	Eigen::Vector3f facenormal = face.normal.normalized();
 
@@ -413,6 +439,16 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 		pair.second = t;
 		return pair;
 	}
+}
+
+Eigen::Vector3f Flyscene::reflect(Eigen::Vector3f direction, Eigen::Vector3f normal) {
+	return (direction - 2 * (direction.dot(normal) * normal)).normalized();
+}
+
+
+Eigen::Vector3f Flyscene::refract(Eigen::Vector3f direction, Tucano::Face face) {
+	// TO DO: implement
+	return direction;
 }
 
 bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box) {
@@ -462,6 +498,7 @@ bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightDirection) 
 //Call function in rayTraceScene before pixel loop
 void Flyscene::sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> light, float radius, int nLightpoints) {
 	Eigen::Vector3f lightLoc = light.first;
+
 	for (int i = 0; i < nLightpoints; i++) {
 		float x = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float y = (-radius + (rand() / (RAND_MAX / (radius * 2))));
