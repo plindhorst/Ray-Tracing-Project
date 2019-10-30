@@ -185,9 +185,9 @@ private:
 	bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
 
 public:
-	const string OBJECT_NAME = "bunny.obj";
+	const string OBJECT_NAME = "dodgeColorTest.obj";
 
-	static const bool RENDER_BOUNDINGBOXES = true;
+	static const bool RENDER_BOUNDINGBOXES = false;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
 	const int MIN_FACES = 300;
 	const int MAX_BOXES = INT_MAX;

@@ -324,7 +324,7 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 	return !(tin > tout || tout < 0);
 }
 
-//Call function in calculate color, if it returns true => pixel should be black/ambiant. If it returns false => the pixel should have a color.
+//Call function in calculate color, if it returns true => pixel should be black/ambient. If it returns false => the pixel should have a color.
 bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightDirection) {
 	Tucano::Face current_face;
 	Eigen::Vector3f inter = pointP + 0.001 * (lightDirection);
