@@ -16,7 +16,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/test4.obj");
+		"resources/models/dodgecolortest.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -34,8 +34,9 @@ void Flyscene::initialize(int width, int height) {
 	// create a first ray-tracing light source at some random position
 	lights.push_back(Eigen::Vector3f(-0.5, 2.0, 3.0));
 
-	for (int a = 0; a < 3; a++) {
+	for (int a = 0; a < max_depth; a++) {
 		ray[a] = Tucano::Shapes::Cylinder(0.1, 1.0, 16, 64);
+		ray[a].setSize(0.005, 10);
 	}
 
 	// scale the camera representation (frustum) for the ray debug
@@ -86,7 +87,7 @@ void Flyscene::paintGL(void) {
 	phong.render(mesh, flycamera, scene_light);
 
 	// render the ray and camera representation for ray debug
-	for (int a = 0; a <= max_depth; a++) {
+	for (int a = 0; a < max_depth; a++) {
 		ray[a].render(flycamera, scene_light);
 	}
 	camerarep.render(flycamera, scene_light);
@@ -135,26 +136,25 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 	camerarep.resetModelMatrix();
 	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
 	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir);
-	//Eigen::Vector3f color = traceRay(origin, dir, 0);
+	Eigen::Vector3f color = traceRay(origin, dir, 0);
 	
 
-	for (int i = 1; i <= max_depth + 1; i++) {
+	for (int i = 1; i <= max_depth; i++) {
 		Tucano::Face minimum_face = std::get<0>(tuple);
 		Eigen::Vector3f interPoint = std::get<1>(tuple);
 		float minimum_distance = std::get<2>(tuple);
 
-		//ray[i - 1].setColor(Eigen::Vector4f(color.x(), color.y(), color.z(), 1));
+		ray[i - 1].setColor(Eigen::Vector4f(color.x(), color.y(), color.z(), 1));
 		if (minimum_distance == INFINITY) {
 			ray[i- 1].setSize(0.005, 10);
 			return;
 		}
 		else {
 			ray[i - 1].setSize(0.005, minimum_distance);
-			if (i != max_depth + 1) {
+			if (i != max_depth) {
 				ray[i].resetModelMatrix();
 				Eigen::Vector3f direction = reflect(dir, minimum_face.normal).normalized();
 				Eigen::Vector3f start = interPoint + 0.001 * direction;
-
 				ray[i].setOriginOrientation(start, direction);
 				tuple = calculateMinimumFace(start, direction);
 			}
@@ -164,7 +164,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 }
 
 void Flyscene::resetDebugRay() {
-	for (int i = 0; i <= max_depth; i++) {
+	for (int i = 0; i < max_depth; i++) {
 		ray[i].setSize(0, 0);
 	}
 }

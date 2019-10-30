@@ -125,8 +125,8 @@ private:
 	// Depth of recursive raytracing
 	const static int max_depth = 2;
 
-	//Array of cylinder for debugray, max_depth + 1 size since
-	Tucano::Shapes::Cylinder ray [max_depth + 1];
+	//Array of cylinder for debugray
+	Tucano::Shapes::Cylinder ray [max_depth];
 
 	// Scene meshes
 	Tucano::Mesh mesh;
