@@ -84,7 +84,16 @@ public:
 			std::pair<Eigen::Vector3f, Eigen::Vector3f> light = std::pair<Eigen::Vector3f, Eigen::Vector3f>(flycamera.getCenter(), Eigen::Vector3f(r, g, b));
 			if (l == "s") {
 				// create spherical lights out of point light
-				sphericalLight(light, 0.15, nSphereLights);
+				string radius;
+				std::cout << "What Radius?" << std::endl;
+				std::cin >> radius;
+				while (std::cin.fail()) {
+					std::cout << "Error" << std::endl;
+					std::cin.clear();
+					std::cin.ignore(256, '\n');
+					std::cin >> l;
+				}
+				sphericalLight(light, std::stof(radius), nSphereLights);
 				light.second /= (nSphereLights + 1);
 			}
 
@@ -202,7 +211,7 @@ public:
 	const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
 	const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);
 
-	const int nSphereLights = 0;
+	const int nSphereLights = 12;
 
 	// Default Material
 	Eigen::Vector3f ka = Eigen::Vector3f(0.2, 0.2, 0.2);
