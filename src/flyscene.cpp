@@ -481,9 +481,10 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 	Returns an interpolated normal of the point P on the face. Returns nullvector if point does not lie on the face.
 */
 Eigen::Vector3f Flyscene::interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP) {
-	Eigen::Vector3f vert0 = mesh.getVertex(face.vertex_ids[0]).head<3>();
-	Eigen::Vector3f vert1 = mesh.getVertex(face.vertex_ids[1]).head<3>();
-	Eigen::Vector3f vert2 = mesh.getVertex(face.vertex_ids[2]).head<3>();
+	Eigen::Affine3f M = mesh.getShapeModelMatrix();
+	Eigen::Vector3f vert0 = M * mesh.getVertex(face.vertex_ids[0]).head<3>();
+	Eigen::Vector3f vert1 = M * mesh.getVertex(face.vertex_ids[1]).head<3>();
+	Eigen::Vector3f vert2 = M * mesh.getVertex(face.vertex_ids[2]).head<3>();
 	Eigen::Vector3f facenormal = face.normal.normalized();
 
 	Eigen::Vector3f edge0 = vert1 - vert0;
@@ -494,13 +495,16 @@ Eigen::Vector3f Flyscene::interpolateNormal(Tucano::Face& face, Eigen::Vector3f 
 	Eigen::Vector3f Inner1 = PointP - vert1;
 	Eigen::Vector3f Inner2 = PointP - vert2;
 
-	float area0 = edge0.cross(Inner0).norm() / 2;
-	float area1 = edge1.cross(Inner1).norm() / 2;
-	float area2 = edge2.cross(Inner2).norm() / 2;
+	Eigen::Vector3f area0v = edge0.cross(Inner0);
+	Eigen::Vector3f area1v = edge1.cross(Inner1);
+	Eigen::Vector3f area2v = edge2.cross(Inner2);
 
-	if (area0 < 0 || area1 < 0 || area2 < 0) {
+	if (facenormal.dot(area0v) < 0 || facenormal.dot(area1v) < 0 || facenormal.dot(area2v) < 0) {
 		return Eigen::Vector3f(0, 0, 0);
 	}
+	float area0 = area0v.norm() / 2;
+	float area1 = area1v.norm() / 2;
+	float area2 = area2v.norm() / 2;
 
 	float area = edge0.cross(-edge2).norm() / 2;
 	return (mesh.getNormal(face.vertex_ids[0]).normalized() * area1 / area + mesh.getNormal(face.vertex_ids[1]).normalized() * area2 / area + mesh.getNormal(face.vertex_ids[2]).normalized() * area0 / area).normalized();
