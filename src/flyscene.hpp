@@ -74,8 +74,15 @@ public:
 
 	void traceRayThread(int h, int w, int start, int stop, vector<vector<Eigen::Vector3f>>& pixel_data);
 
+	//TO DO:: insert documentation
+	void resetDebugRay();
+
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir);
+
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
+
+	Eigen::Vector3f calculateReflectColor(Tucano::Face minimum_face, Eigen::Vector3f interPoint, Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth);
 
 	// TO DO: insert documentation
 	Eigen::Vector3f reflect(Eigen::Vector3f direction, Eigen::Vector3f normal);
@@ -128,8 +135,11 @@ private:
 	// Scene light represented as a camera
 	Tucano::Camera scene_light;
 
-	/// A very thin cylinder to draw a debug ray
-	Tucano::Shapes::Cylinder ray = Tucano::Shapes::Cylinder(0.1, 1.0, 16, 64);
+	// Depth of recursive raytracing
+	const static int max_depth = 2;
+
+	//Array of cylinder for debugray
+	Tucano::Shapes::Cylinder ray [max_depth];
 
 	// Scene meshes
 	Tucano::Mesh mesh;
@@ -145,8 +155,6 @@ private:
 	bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
 
 	Eigen::Vector3f interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP);
-
-	int max_depth = 4;
 
 public:
 	const string OBJECT_NAME = "dodgeColorTest.obj";
