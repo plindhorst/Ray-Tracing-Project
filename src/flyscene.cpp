@@ -208,16 +208,17 @@ void Flyscene::generateBoundingBoxes() {
 	box->fitMesh();
 
 	bool notDone = true;
-	while (notDone) {
+	while (notDone&&BoundingBox::boxes.size()<MAX_BOXES) {
 		notDone = false;
 		vector<BoundingBox*> current = BoundingBox::boxes;
 		std::cout << "Now have " << current.size() << " boxes." << std::endl;
 		for (BoundingBox* box : current) {
-			if (box->getNumberOfFaces() > MIN_FACES) {
+			if (box->getNumberOfFaces() > MIN_FACES && (!box->failed[0] || !box->failed[1] || !box->failed[2])) {
 				BoundingBox* newBox = box->splitBox();
-				if (box!=newBox) {
-					notDone = true;
+				while (box == newBox) {
+					newBox = box->splitBox();
 				}
+				notDone = true;
 			}
 		}
 	}
@@ -333,7 +334,7 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightLoc) {
 	Eigen::Vector3f lightDirection = -(pointP - lightLoc).normalized();
 	Tucano::Face current_face;
-	Eigen::Vector3f inter = pointP + 0.001*(lightDirection);
+	Eigen::Vector3f inter = pointP + 0.001 * (lightDirection);
 
 	// Loop through all Bounding boxes.
 	for (BoundingBox* box : BoundingBox::boxes) {
@@ -362,7 +363,7 @@ void Flyscene::sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLigh
 
 //Call function in calculateColor
 Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP) {
-	
+
 	if (shadow(pointP, lightLoc)) {
 		return Eigen::Vector3f(0.0, 0.0, 0.0);
 	}
@@ -381,7 +382,7 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 	Eigen::Vector3f lightReflection = (lightDirection - 2 * (normal.dot(lightDirection)) * normal);
 	Eigen::Vector3f eyeDirection = (origin - pointP).normalized();
 	Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
-	
+
 	Eigen::Vector3f ambient = Eigen::Vector3f(light_intensity.x() * ka.x(), light_intensity.y() * ka.y(), light_intensity.z() * ka.z());
 	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(lightDirection.dot(normal), 0.f);
 	Eigen::Vector3f specular = Eigen::Vector3f(light_intensity.x() * ks.x(), light_intensity.y() * ks.y(), light_intensity.z() * ks.z()) * std::max(std::pow(lightReflection.dot(eyeDirection), shininess), 0.f);

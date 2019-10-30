@@ -129,6 +129,7 @@ public:
 	static const bool RENDER_BOUNDINGBOXES = true;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
 	static const int MIN_FACES = 3000;
+	static const int MAX_BOXES = 2;
 
 	const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
 	const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);
