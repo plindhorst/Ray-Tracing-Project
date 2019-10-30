@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <thread>
+#include <time.h>
 
 #include "BoundingBox.h"
 #include "flyscene.hpp"
@@ -132,6 +134,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 
 void Flyscene::raytraceScene(int width, int height) {
 	std::cout << "ray tracing ..." << std::endl;
+	time_t begin_time = time(NULL);
 
 	// if no width or height passed, use dimensions of current viewport
 	Eigen::Vector2i image_size(width, height);
@@ -145,23 +148,54 @@ void Flyscene::raytraceScene(int width, int height) {
 	for (int i = 0; i < image_size[1]; ++i)
 		pixel_data[i].resize(image_size[0]);
 
+	std::vector<std::thread> threads;
+
+	// Check if image size can be divided by the number of threads
+	if (image_size[1] % THREADS != 0) {
+		std::cout << "Error: Incorrect number of threads" << std::endl;
+		return;
+	}
+
+	PIXEL_COUNT = 0;
+	int start = 0;
+	int pixels = image_size[1] / THREADS;
+	for (int i = 0; i < THREADS; i++) {
+		threads.emplace_back(&Flyscene::traceRayThread, this, image_size[1], image_size[0],start, start + pixels, std::ref(pixel_data));
+		start += pixels;
+	}
+
+	while (PIXEL_COUNT < 1000) {
+		std::cout << "\r" << (PIXEL_COUNT + 1) << "/" << image_size[1];
+	}
+
+	// Wait for all threads to end
+	for (std::thread& t : threads) {
+		t.join();
+	}
+
+	// write the ray tracing result to a PPM image
+	Tucano::ImageImporter::writePPMImage("result.ppm", pixel_data);
+
+	time_t end_time = time(NULL);
+	std::cout << " ray tracing done! " << std::endl;
+	std::cout << std::endl << "Time it took to render(in seconds): " << end_time - begin_time << std::endl;
+}
+
+void Flyscene::traceRayThread(int h, int w, int start, int stop, vector<vector<Eigen::Vector3f>>& pixel_data) {
 	// origin of the ray is always the camera center
 	Eigen::Vector3f origin = flycamera.getCenter();
 	Eigen::Vector3f direction;
 
 	// for every pixel shoot a ray from the origin through the pixel coords
-	for (int j = 0; j < image_size[1]; ++j) {
-		for (int i = 0; i < image_size[0]; ++i) {
+	for (int j = start; j < stop; ++j) {
+		for (int i = 0; i < h; ++i) {
 			// create a ray from the camera passing through the pixel (i,j)
 			direction = (flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin).normalized();
 			// launch raytracing for the given ray and write result to pixel data
 			pixel_data[j][i] = traceRay(origin, direction);
 		}
-		std::cout << "\r" << j << "/" << image_size[1];
+		PIXEL_COUNT++;
 	}
-	// write the ray tracing result to a PPM image
-	Tucano::ImageImporter::writePPMImage("result.ppm", pixel_data);
-	std::cout << "ray tracing done! " << std::endl;
 }
 
 

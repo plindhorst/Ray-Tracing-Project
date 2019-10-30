@@ -127,6 +127,8 @@ public:
 	 */
 	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir);
 
+	void traceRayThread(int h, int w, int start, int stop, vector<vector<Eigen::Vector3f>>& pixel_data);
+
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
 
@@ -142,6 +144,8 @@ public:
   Eigen::Vector3f calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP);
 
 private:
+	int PIXEL_COUNT;
+
 	// A simple phong shader for rendering meshes
 	Tucano::Effects::PhongMaterial phong;
 
@@ -192,6 +196,8 @@ public:
 	const int MAX_BOXES = INT_MAX;
 
 	static std::unordered_map<Tucano::Face*, int> faceids;
+
+	static const int THREADS = 20;
 
 	const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
 	const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);
