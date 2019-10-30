@@ -386,16 +386,12 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 Eigen::Vector3f Flyscene::calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP) {
 	Eigen::Vector3f sumColor = Eigen::Vector3f(0.0, 0.0, 0.0);
 	Eigen::Vector3f sumColorDir = Eigen::Vector3f(0.0, 0.0, 0.0);
-	Eigen::Vector3f intensity = Eigen::Vector3f(0.0, 0.0, 0.0);
-	Eigen::Vector3f intensityDir = Eigen::Vector3f(0.0, 0.0, 0.0);
 	for (int i = 0; i < lights.size(); i++) {
 		Eigen::Vector3f lightDirection = -(pointP - lights[i].first).normalized();
 		sumColor += calcSingleColor(minimum_face, origin, lightDirection, lights[i].second, pointP);
-		intensity += lights[i].second;
 	}
 	for (int i = 0; i < dirLights.size(); i++) {
 		sumColor += calcSingleColor(minimum_face, origin, dirLights[i].first, dirLights[i].second, pointP);
-		intensity += lights[i].second;
 	}
-	return Eigen::Vector3f(sumColor.x() / intensity.x(), sumColor.y() / intensity.y(), sumColor.z() / intensity.z());
+	return Eigen::Vector3f(min(sumColor.x(), 1.f), min(sumColor.y(), 1.f), min(sumColor.z(), 1.f));
 }
