@@ -38,14 +38,15 @@ void Flyscene::initialize(int width, int height) {
 	// create a first ray-tracing light source at some random position
 	lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(-0.5, 2.0, 3.0), Eigen::Vector3f(1, 1, 1)));
 
+	for (int a = 0; a < max_depth; a++) {
+		ray[a] = Tucano::Shapes::Cylinder(0.1, 1.0, 16, 64);
+		ray[a].setSize(0.005, 10);
+	}
+
 	// scale the camera representation (frustum) for the ray debug
 	camerarep.shapeMatrix()->scale(0.2);
 
-	// the debug ray is a cylinder, set the radius and length of the cylinder
-	ray.setSize(0.005, 10.0);
-
 	// craete a first debug ray pointing at the center of the screen
-	createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 
 	glEnable(GL_DEPTH_TEST);
 
@@ -69,6 +70,7 @@ void Flyscene::initialize(int width, int height) {
 			faceids.insert(std::pair<Tucano::Face*, int>(&mesh.getFace(i), i));
 		}
 	}
+	createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 }
 
 void Flyscene::paintGL(void) {
@@ -89,7 +91,9 @@ void Flyscene::paintGL(void) {
 	phong.render(mesh, flycamera, scene_light);
 
 	// render the ray and camera representation for ray debug
-	ray.render(flycamera, scene_light);
+	for (int a = 0; a < max_depth; a++) {
+		ray[a].render(flycamera, scene_light);
+	}
 	camerarep.render(flycamera, scene_light);
 
 	// render ray tracing light sources as yellow spheres
@@ -112,7 +116,6 @@ void Flyscene::paintGL(void) {
 
 	// render coordinate system at lower right corner
 	flycamera.renderAtCorner();
-
 	renderBoundingBoxes();
 }
 
@@ -130,19 +133,55 @@ void Flyscene::simulate(GLFWwindow* window) {
 }
 
 void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
-	ray.resetModelMatrix();
+	//Reset all rays
+	resetDebugRay();
+	ray[0].resetModelMatrix();
+
 	// from pixel position to world coordinates
 	Eigen::Vector3f screen_pos = flycamera.screenToWorld(mouse_pos);
 
 	// direction from camera center to click position
 	Eigen::Vector3f dir = (screen_pos - flycamera.getCenter()).normalized();
+	Eigen::Vector3f origin = flycamera.getCenter();
 
 	// position and orient the cylinder representing the ray
-	ray.setOriginOrientation(flycamera.getCenter(), dir);
+	ray[0].setOriginOrientation(origin, dir);
 
 	// place the camera representation (frustum) on current camera location, 
 	camerarep.resetModelMatrix();
 	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir);
+	Eigen::Vector3f color = traceRay(origin, dir, 0);
+	
+
+	for (int i = 1; i <= max_depth; i++) {
+		Tucano::Face minimum_face = std::get<0>(tuple);
+		Eigen::Vector3f interPoint = std::get<1>(tuple);
+		float minimum_distance = std::get<2>(tuple);
+
+		ray[i - 1].setColor(Eigen::Vector4f(color.x(), color.y(), color.z(), 1));
+		if (minimum_distance == INFINITY) {
+			ray[i- 1].setSize(0.005, 10);
+			return;
+		}
+		else {
+			ray[i - 1].setSize(0.005, minimum_distance);
+			if (i != max_depth) {
+				ray[i].resetModelMatrix();
+				Eigen::Vector3f direction = reflect(dir, minimum_face.normal).normalized();
+				Eigen::Vector3f start = interPoint + 0.001 * direction;
+				ray[i].setOriginOrientation(start, direction);
+				tuple = calculateMinimumFace(start, direction);
+			}
+			
+		}
+	}
+}
+
+void Flyscene::resetDebugRay() {
+	for (int i = 0; i < max_depth; i++) {
+		ray[i].setSize(0, 0);
+	}
 }
 
 void Flyscene::addLight() {
@@ -284,7 +323,48 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	if (depth == max_depth) {
 		return Eigen::Vector3f(0, 0, 0);
 	}
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir);
+	Tucano::Face minimum_face = std::get<0>(tuple);
+	Eigen::Vector3f interPoint = std::get<1>(tuple);
+	float minimum_distance = std::get<2>(tuple);
 	
+
+	// Test if the ray intersected with a face, if so: calculate the color
+	if (minimum_distance == INFINITY) {
+		if (depth == 0) {
+			return BACKGROUND_COLOR;
+		}
+		return Eigen::Vector3f(0, 0, 0);
+	}
+	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
+		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
+	}
+
+	// RECURSIVELY CALCULATE COLOR
+	// Direct color component
+	Eigen::Vector3f direct_color = calculateColor(minimum_face, origin, interPoint);
+
+	// Material properties
+	float transparency = materials[minimum_face.material_id].getOpticalDensity();
+	if (minimum_face.material_id != -1) {
+		ks = materials[minimum_face.material_id].getSpecular();
+	}
+
+	// Reflected component
+	Eigen::Vector3f reflected_ray = reflect(dir.normalized(), minimum_face.normal.normalized());
+	Eigen::Vector3f offset_reflection = interPoint + (0.001 * reflected_ray);
+	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
+
+	// Refracted component
+	Eigen::Vector3f refracted_ray = refract(dir.normalized(), minimum_face);
+	Eigen::Vector3f offset_refraction = interPoint + (0.001 * refracted_ray);
+	Eigen::Vector3f refracted_color = traceRay(offset_refraction, refracted_ray, depth + 1);
+
+	// Add all colors
+	return (1 - transparency) * (direct_color + reflected_color.cwiseProduct(ks)) + transparency * reflected_color;
+}
+
+std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f &origin, Eigen::Vector3f dir) {
 	// Parameters to keep track of current faces and the closest face
 	std::pair<Eigen::Vector3f, float> minimum_distance_and_point = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
 	Tucano::Face minimum_face;
@@ -304,41 +384,11 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 			}
 		}
 	}
-
-	// Test if the ray intersected with a face, if so: calculate the color
-	if (minimum_distance_and_point.second == INFINITY) {
-		if (depth == 0) {
-			return BACKGROUND_COLOR;
-		}
-		return Eigen::Vector3f(0, 0, 0);
-	}
-	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
-		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
-	}
-
-	// RECURSIVELY CALCULATE COLOR
-	// Direct color component
-	Eigen::Vector3f direct_color = calculateColor(minimum_face, origin, minimum_distance_and_point.first);
-
-	// Material properties
-	float transparency = materials[minimum_face.material_id].getOpticalDensity();
-	if (minimum_face.material_id != -1) {
-		ks = materials[minimum_face.material_id].getSpecular();
-	}
-
-	// Reflected component
-	Eigen::Vector3f reflected_ray = reflect(dir.normalized(), minimum_face.normal.normalized());
-	Eigen::Vector3f offset_reflection = minimum_distance_and_point.first + (0.001 * reflected_ray);
-	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
-
-	// Refracted component
-	Eigen::Vector3f refracted_ray = refract(dir.normalized(), minimum_face);
-	Eigen::Vector3f offset_refraction = minimum_distance_and_point.first + (0.001 * refracted_ray);
-	Eigen::Vector3f refracted_color = traceRay(offset_refraction, refracted_ray, depth + 1);
-
-	// Add all colors
-	return (1 - transparency) * (direct_color + reflected_color.cwiseProduct(ks)) + transparency * reflected_color;
+	
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = std::make_tuple(minimum_face, minimum_distance_and_point.first, minimum_distance_and_point.second);
+	return tuple;
 }
+
 
 void Flyscene::generateBoundingBoxes() {
 	BoundingBox::mesh = &mesh;
@@ -440,6 +490,25 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 		pair.second = t;
 		return pair;
 	}
+}
+
+Eigen::Vector3f Flyscene::calculateReflectColor(Tucano::Face minimum_face, Eigen::Vector3f interPoint, Eigen::Vector3f &origin, Eigen::Vector3f &dir, int depth) {
+	// Material properties
+	float transparency = materials[minimum_face.material_id].getOpticalDensity();
+	if (minimum_face.material_id != -1) {
+		ks = materials[minimum_face.material_id].getSpecular();
+	}
+
+	// Reflected component
+	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal);
+	Eigen::Vector3f offset_origin = interPoint + (0.001 * reflected_ray);
+	Eigen::Vector3f reflected_color = traceRay(offset_origin, reflected_ray, depth + 1);
+
+
+	// Refracted component
+	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
+	//Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1);
+	return reflected_color.cwiseProduct(ks);
 }
 
 Eigen::Vector3f Flyscene::reflect(Eigen::Vector3f direction, Eigen::Vector3f normal) {
