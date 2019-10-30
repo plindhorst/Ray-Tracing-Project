@@ -369,7 +369,8 @@ Eigen::Vector3f Flyscene::calculateColor(float minimum_distance, Tucano::Face& m
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 	Eigen::Affine3f lightViewMatrix = scene_light.getViewMatrix();
 
-	Eigen::Vector3f normal = minimum_face.normal.normalized();
+	Eigen::Vector3f normal = ((mesh.getNormal(minimum_face.vertex_ids[0])+ mesh.getNormal(minimum_face.vertex_ids[1])+ mesh.getNormal(minimum_face.vertex_ids[2]))/3).normalized();
+
 	Eigen::Vector3f lightDirection = (viewMatrix * lightViewMatrix.inverse() * Eigen::Vector3f(0.0, 0.0, 1.0)).normalized();
 	Eigen::Vector3f lightReflection = (-lightDirection - 2 * (normal.dot(-lightDirection)) * normal).normalized();
 	Eigen::Vector3f eyeDirection = -dir;
