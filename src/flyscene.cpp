@@ -18,7 +18,6 @@ void Flyscene::initialize(int width, int height) {
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
 		"resources/models/toy.obj");
 
-
 	// normalize the model (scale to unit cube and center at origin)
 	mesh.normalizeModelMatrix();
 
@@ -195,6 +194,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 			}
 		}
 	}
+
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance_and_point.second == INFINITY) {
 		if (depth == 0) {
@@ -218,8 +218,8 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 
 	// Reflected component
 	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal.normalized());
-	Eigen::Vector3f offset_origin = minimum_distance_and_point.first + (0.001 * reflected_ray);
-	Eigen::Vector3f reflected_color = traceRay(offset_origin, reflected_ray, depth + 1);
+	Eigen::Vector3f offset_reflection = minimum_distance_and_point.first + (0.001 * reflected_ray);
+	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
 
 	// Refracted component
 	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
@@ -282,8 +282,6 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>() / vec0.w());
 	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>() / vec1.w());
 	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>() / vec2.w());
-
-
 
 	//get Normal of the face
 	Eigen::Vector3f facenormal = face.normal.normalized();
@@ -393,7 +391,6 @@ void Flyscene::sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLigh
 		lights.push_back(Eigen::Vector3f(lightLoc.x() + x, lightLoc.y() + y, lightLoc.z() + z));
 	}
 }
-
 
 //Call function in calculateColor
 Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP) {
