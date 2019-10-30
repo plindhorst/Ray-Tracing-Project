@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <thread>
+#include <time.h>
 
 #include "BoundingBox.h"
 #include "flyscene.hpp"
@@ -16,8 +18,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/dodgecolortest.obj");
-
+		"resources/models/" + OBJECT_NAME);
 
 	// normalize the model (scale to unit cube and center at origin)
 	mesh.normalizeModelMatrix();
@@ -31,8 +32,11 @@ void Flyscene::initialize(int width, int height) {
 	lightrep.setColor(Eigen::Vector4f(1.0, 1.0, 0.0, 1.0));
 	lightrep.setSize(0.15);
 
+	dirLightrep.setColor(Eigen::Vector4f(1, 1, 0, 1));
+	dirLightrep.setSize(0.15);
+
 	// create a first ray-tracing light source at some random position
-	lights.push_back(Eigen::Vector3f(-0.5, 2.0, 3.0));
+	lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(-0.5, 2.0, 3.0), Eigen::Vector3f(1, 1, 1)));
 
 	for (int a = 0; a < max_depth; a++) {
 		ray[a] = Tucano::Shapes::Cylinder(0.1, 1.0, 16, 64);
@@ -81,7 +85,7 @@ void Flyscene::paintGL(void) {
 
 	// position the scene light at the last ray-tracing light source
 	scene_light.resetViewMatrix();
-	scene_light.viewMatrix()->translate(-lights.back());
+	scene_light.viewMatrix()->translate(-lights.back().first);
 
 	// render the scene using OpenGL and one light source
 	phong.render(mesh, flycamera, scene_light);
@@ -95,8 +99,19 @@ void Flyscene::paintGL(void) {
 	// render ray tracing light sources as yellow spheres
 	for (int i = 0; i < lights.size(); ++i) {
 		lightrep.resetModelMatrix();
-		lightrep.modelMatrix()->translate(lights[i]);
+		lightrep.modelMatrix()->translate(lights[i].first);
 		lightrep.render(flycamera, scene_light);
+	}
+	for (int i = 0; i < dirLights.size(); ++i) {
+
+		dirLightrep.resetModelMatrix();
+		Eigen::Affine3f m = dirLightrep.getModelMatrix();
+		m(2, 2) = -1;
+		dirLightrep.setModelMatrix(m);
+		dirLightrep.modelMatrix()->translate(Eigen::Vector3f(0, 2, 0));
+		Eigen::Quaternion<float> rotation = get<2>(dirLights[i]);
+		dirLightrep.modelMatrix()->rotate(rotation);
+		dirLightrep.render(flycamera, scene_light);
 	}
 
 	// render coordinate system at lower right corner
@@ -169,8 +184,77 @@ void Flyscene::resetDebugRay() {
 	}
 }
 
+void Flyscene::addLight() {
+	bool rightColor = false;
+	float r, g, b;
+	std::string l = "";
+	while (!rightColor) {
+		std::cout << " What colour do you want in rgb format? (Enter three numbers seperately between 1 and 0)" << std::endl;
+		std::cin >> r >> g >> b;
+		while (std::cin.fail()) {
+			std::cout << "Error" << std::endl;
+			std::cin.clear();
+			std::cin.ignore(256, '\n');
+			std::cin >> r >> g >> b;
+		}
+		if ((0 <= r <= 1) && (0 <= g <= 1) && (0 <= b <= 1)) {
+			rightColor = true;
+		}
+		else {
+			std::cout << " Wrong color code " << std::endl;
+		}
+	}
+	while (!(l == "s" || l == "p" || l == "d")) {
+		std::cout << " Do you want a spherical, directional or a point light? (s, d or p)" << std::endl;
+		std::cin >> l;
+		while (std::cin.fail()) {
+			std::cout << "Error" << std::endl;
+			std::cin.clear();
+			std::cin.ignore(256, '\n');
+			std::cin >> l;
+		}
+	}
+	if (l == "s" || l == "p") {
+		std::pair<Eigen::Vector3f, Eigen::Vector3f> light = std::pair<Eigen::Vector3f, Eigen::Vector3f>(flycamera.getCenter(), Eigen::Vector3f(r, g, b));
+		if (l == "s") {
+			// create spherical lights out of point light
+			string radius;
+			std::cout << "What Radius?" << std::endl;
+			std::cin >> radius;
+			while (std::cin.fail()) {
+				std::cout << "Error" << std::endl;
+				std::cin.clear();
+				std::cin.ignore(256, '\n');
+				std::cin >> radius;
+			}
+			string lights;
+			std::cout << "How many point light for approximations?" << std::endl;
+			std::cin >> lights;
+			while (std::cin.fail()) {
+				std::cout << "Error" << std::endl;
+				std::cin.clear();
+				std::cin.ignore(256, '\n');
+				std::cin >> lights;
+			}
+			int Nlights = std::stoi(lights);
+			sphericalLight(light, std::stof(radius), Nlights);
+			light.second /= (Nlights + 1);
+		}
+
+		lights.push_back(light);
+	}
+
+	if (l == "d") {
+		Eigen::Vector3f direction = flycamera.screenToWorld(Eigen::Vector2f(flycamera.getViewport()(2) / 2, flycamera.getViewport()(3) / 2));
+		std::tuple<Eigen::Vector3f, Eigen::Vector3f, Eigen::Quaternion<float>> light = std::tuple<Eigen::Vector3f, Eigen::Vector3f, Eigen::Quaternion<float>>(direction, Eigen::Vector3f(r, g, b), flycamera.getRotationMatrix());
+		dirLights.push_back(light);
+	}
+	std::cout << "Created a light with color spectrum (r,g,b): (" << r << ", " << g << ", " << b << ")" << std::endl;
+}
+
 void Flyscene::raytraceScene(int width, int height) {
 	std::cout << "ray tracing ..." << std::endl;
+	time_t begin_time = time(NULL);
 
 	// if no width or height passed, use dimensions of current viewport
 	Eigen::Vector2i image_size(width, height);
@@ -184,29 +268,54 @@ void Flyscene::raytraceScene(int width, int height) {
 	for (int i = 0; i < image_size[1]; ++i)
 		pixel_data[i].resize(image_size[0]);
 
+	std::vector<std::thread> threads;
+
+	// Check if image size can be divided by the number of threads
+	if (image_size[1] % THREADS != 0) {
+		std::cout << "Error: Incorrect number of threads" << std::endl;
+		return;
+	}
+
+	PIXEL_COUNT = 0;
+	int start = 0;
+	int pixels = image_size[1] / THREADS;
+	for (int i = 0; i < THREADS; i++) {
+		threads.emplace_back(&Flyscene::traceRayThread, this, image_size[1], image_size[0], start, start + pixels, std::ref(pixel_data));
+		start += pixels;
+	}
+
+	while (PIXEL_COUNT < 1000) {
+		std::cout << "\r" << (PIXEL_COUNT + 1) << "/" << image_size[1];
+	}
+
+	// Wait for all threads to end
+	for (std::thread& t : threads) {
+		t.join();
+	}
+
+	// write the ray tracing result to a PPM image
+	Tucano::ImageImporter::writePPMImage("result.ppm", pixel_data);
+
+	time_t end_time = time(NULL);
+	std::cout << " ray tracing done! " << std::endl;
+	std::cout << std::endl << "Time it took to render(in seconds): " << end_time - begin_time << std::endl;
+}
+
+void Flyscene::traceRayThread(int h, int w, int start, int stop, vector<vector<Eigen::Vector3f>>& pixel_data) {
 	// origin of the ray is always the camera center
 	Eigen::Vector3f origin = flycamera.getCenter();
 	Eigen::Vector3f direction;
 
-	// create spherical lights out of point lights
-	vector<Eigen::Vector3f> lightsDup = lights;
-	for (int i = 0; i < lightsDup.size(); i++) {
-		sphericalLight(lightsDup[i], 0.15, nSphereLights);
-	}
-
 	// for every pixel shoot a ray from the origin through the pixel coords
-	for (int j = 0; j < image_size[1]; ++j) {
-		for (int i = 0; i < image_size[0]; ++i) {
+	for (int j = start; j < stop; ++j) {
+		for (int i = 0; i < h; ++i) {
 			// create a ray from the camera passing through the pixel (i,j)
 			direction = (flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin).normalized();
 			// launch raytracing for the given ray and write result to pixel data
 			pixel_data[j][i] = traceRay(origin, direction, 0);
 		}
-		std::cout << "\r" << j << "/" << image_size[1];
+		PIXEL_COUNT++;
 	}
-	// write the ray tracing result to a PPM image
-	Tucano::ImageImporter::writePPMImage("result.ppm", pixel_data);
-	std::cout << "ray tracing done! " << std::endl;
 }
 
 
@@ -272,12 +381,16 @@ void Flyscene::generateBoundingBoxes() {
 	box->fitMesh();
 
 	bool notDone = true;
-	while (notDone) {
+	while (notDone && BoundingBox::boxes.size() < MAX_BOXES) {
 		notDone = false;
 		vector<BoundingBox*> current = BoundingBox::boxes;
+		std::cout << "Now have " << current.size() << " boxes." << std::endl;
 		for (BoundingBox* box : current) {
-			if (box->getNumberOfFaces() > MIN_FACES) {
-				box->splitBox();
+			if (box->getNumberOfFaces() > MIN_FACES && (!box->failed[0] || !box->failed[1] || !box->failed[2])) {
+				BoundingBox* newBox = box->splitBox();
+				while (box == newBox) {
+					newBox = box->splitBox();
+				}
 				notDone = true;
 			}
 		}
@@ -364,8 +477,6 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 }
 
 Eigen::Vector3f Flyscene::calculateReflectColor(Tucano::Face minimum_face, Eigen::Vector3f interPoint, Eigen::Vector3f &origin, Eigen::Vector3f &dir, int depth) {
-
-
 	// Material properties
 	float transparency = materials[minimum_face.material_id].getOpticalDensity();
 	if (minimum_face.material_id != -1) {
@@ -382,7 +493,6 @@ Eigen::Vector3f Flyscene::calculateReflectColor(Tucano::Face minimum_face, Eigen
 	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
 	//Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1);
 	return reflected_color.cwiseProduct(ks);
-
 }
 
 Eigen::Vector3f Flyscene::reflect(Eigen::Vector3f direction, Eigen::Vector3f normal) {
@@ -420,9 +530,8 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 	return !(tin > tout || tout < 0);
 }
 
-//Call function in calculate color, if it returns true => pixel should be black/ambiant. If it returns false => the pixel should have a color.
-bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightLoc) {
-	Eigen::Vector3f lightDirection = -(pointP - lightLoc).normalized();
+//Call function in calculate color, if it returns true => pixel should be black/ambient. If it returns false => the pixel should have a color.
+bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightDirection) {
 	Tucano::Face current_face;
 	Eigen::Vector3f inter = pointP + 0.001 * (lightDirection);
 
@@ -441,20 +550,21 @@ bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightLoc) {
 }
 
 //Call function in rayTraceScene before pixel loop
-void Flyscene::sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLightpoints) {
+void Flyscene::sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> light, float radius, int nLightpoints) {
+	Eigen::Vector3f lightLoc = light.first;
+
 	for (int i = 0; i < nLightpoints; i++) {
 		float x = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float y = (-radius + (rand() / (RAND_MAX / (radius * 2))));
 		float z = (-radius + (rand() / (RAND_MAX / (radius * 2))));
-		lights.push_back(Eigen::Vector3f(lightLoc.x() + x, lightLoc.y() + y, lightLoc.z() + z));
+		lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(lightLoc.x() + x, lightLoc.y() + y, lightLoc.z() + z), light.second / (nLightpoints + 1)));
 	}
 }
 
 
 //Call function in calculateColor
-Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP) {
-
-	if (shadow(pointP, lightLoc)) {
+Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f lightDirection, Eigen::Vector3f light_intensity, Eigen::Vector3f& pointP) {
+	if (shadow(pointP, lightDirection)) {
 		return Eigen::Vector3f(0.0, 0.0, 0.0);
 	}
 	if (minimum_face.material_id != -1) {
@@ -468,10 +578,8 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 	}
 
 	Eigen::Vector3f normal = minimum_face.normal.normalized();
-	Eigen::Vector3f lightDirection = -(pointP - lightLoc).normalized();
 	Eigen::Vector3f lightReflection = (lightDirection - 2 * (normal.dot(lightDirection)) * normal);
 	Eigen::Vector3f eyeDirection = (origin - pointP).normalized();
-	Eigen::Vector3f light_intensity = Eigen::Vector3f(1.0, 1.0, 1.0);
 
 	Eigen::Vector3f ambient = Eigen::Vector3f(light_intensity.x() * ka.x(), light_intensity.y() * ka.y(), light_intensity.z() * ka.z());
 	Eigen::Vector3f diffuse = Eigen::Vector3f(light_intensity.x() * kd.x(), light_intensity.y() * kd.y(), light_intensity.z() * kd.z()) * std::max(lightDirection.dot(normal), 0.f);
@@ -484,8 +592,13 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 //Call function in traceRay
 Eigen::Vector3f Flyscene::calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP) {
 	Eigen::Vector3f sumColor = Eigen::Vector3f(0.0, 0.0, 0.0);
+	Eigen::Vector3f sumColorDir = Eigen::Vector3f(0.0, 0.0, 0.0);
 	for (int i = 0; i < lights.size(); i++) {
-		sumColor = sumColor + calcSingleColor(minimum_face, origin, lights[i], pointP);
+		Eigen::Vector3f lightDirection = -(pointP - lights[i].first).normalized();
+		sumColor += calcSingleColor(minimum_face, origin, lightDirection, lights[i].second, pointP);
 	}
-	return sumColor / lights.size();
+	for (int i = 0; i < dirLights.size(); i++) {
+		sumColor += calcSingleColor(minimum_face, origin, get<0>(dirLights[i]), get<1>(dirLights[i]), pointP);
+	}
+	return Eigen::Vector3f(min(sumColor.x(), 1.f), min(sumColor.y(), 1.f), min(sumColor.z(), 1.f));
 }

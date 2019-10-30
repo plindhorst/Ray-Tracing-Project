@@ -50,7 +50,7 @@ public:
 	/**
 	 * @brief Add a new light source
 	 */
-	void addLight(void) { lights.push_back(flycamera.getCenter()); }
+	void addLight();
 
 	/**
 	 * @brief Create a debug ray at the current camera location and passing
@@ -72,6 +72,8 @@ public:
 	 */
 	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth);
 
+	void traceRayThread(int h, int w, int start, int stop, vector<vector<Eigen::Vector3f>>& pixel_data);
+
 	//TO DO:: insert documentation
 	void resetDebugRay();
 
@@ -88,18 +90,22 @@ public:
 	// TO DO: insert documentation
 	Eigen::Vector3f refract(Eigen::Vector3f direction, Tucano::Face face);
 
+
 	/**
 	*Check if light is obstructed
 	*/
 	bool shadow(Eigen::Vector3f& dest, Eigen::Vector3f& light);
 
-	void sphericalLight(Eigen::Vector3f& lightLoc, float radius, int nLightpoints);
+	void sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> lightLoc, float radius, int nLightpoints);
 
-	Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& lightLoc, Eigen::Vector3f& pointP);
+	Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f lightDirection, Eigen::Vector3f light_intensity, Eigen::Vector3f& pointP);
+
 
 	Eigen::Vector3f calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP);
 
 private:
+	int PIXEL_COUNT;
+
 	// A simple phong shader for rendering meshes
 	Tucano::Effects::PhongMaterial phong;
 
@@ -116,9 +122,16 @@ private:
 	// a frustum to represent the camera in the scene
 	Tucano::Shapes::Sphere lightrep;
 
-	// light sources for ray tracing
-	vector<Eigen::Vector3f> lights;
+	Tucano::Shapes::Arrow dirLightrep;
 
+	public: // so we can remove all lights
+	// light sources for ray tracing
+	vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> lights;
+
+	// the directional lights
+	vector<std::tuple<Eigen::Vector3f, Eigen::Vector3f, Eigen::Quaternion<float>>> dirLights;
+
+	private:
 	// Scene light represented as a camera
 	Tucano::Camera scene_light;
 
@@ -143,14 +156,19 @@ private:
 
 
 public:
+	const string OBJECT_NAME = "dodgeColorTest.obj";
+
 	static const bool RENDER_BOUNDINGBOXES = false;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
-	static const int MIN_FACES = 300;
+	const int MIN_FACES = 300;
+	const int MAX_BOXES = INT_MAX;
+
+	static std::unordered_map<Tucano::Face*, int> faceids;
+
+	static const int THREADS = 20;
 
 	const Eigen::Vector3f BACKGROUND_COLOR = Eigen::Vector3f(0.9, 0.9, 0.9);
 	const Eigen::Vector3f FOREGROUND_COLOR = Eigen::Vector3f(0, 0, 1);
-
-	const int nSphereLights = 30;
 
 	// Default Material
 	Eigen::Vector3f ka = Eigen::Vector3f(0.2, 0.2, 0.2);
@@ -159,8 +177,6 @@ public:
 	float shininess = 0;
 	float refraction_index = 0;
 	float transparency = 0;
-
-	static std::unordered_map<Tucano::Face*, int> faceids;
 	~Flyscene();
 };
 

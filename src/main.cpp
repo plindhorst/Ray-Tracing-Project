@@ -51,6 +51,7 @@ void initialize(void) {
             << std::endl;
   std::cout << "T    : Ray trace the scene." << std::endl;
   std::cout << "Esc  : Close application." << std::endl;
+  std::cout << "C	 : Clear all lights from the scene." << std::endl;
   std::cout << " ********************************* " << std::endl;
 }
 
@@ -66,6 +67,10 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action,
     flyscene->addLight();
   else if (key == GLFW_KEY_T && action == GLFW_PRESS)
     flyscene->raytraceScene();
+  else if (key == GLFW_KEY_C && action == GLFW_PRESS) {
+	  flyscene->lights.clear();
+	  flyscene->dirLights.clear();
+  }
 }
 
 static void mouseButtonCallback(GLFWwindow *window, int button, int action,
