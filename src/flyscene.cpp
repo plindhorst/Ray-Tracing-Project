@@ -16,7 +16,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/toy.obj");
+		"resources/models/"+ OBJECT_NAME);
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -202,12 +202,16 @@ void Flyscene::generateBoundingBoxes() {
 	box->fitMesh();
 
 	bool notDone = true;
-	while (notDone) {
+	while (notDone&&BoundingBox::boxes.size()<MAX_BOXES) {
 		notDone = false;
 		vector<BoundingBox*> current = BoundingBox::boxes;
+		std::cout << "Now have " << current.size() << " boxes." << std::endl;
 		for (BoundingBox* box : current) {
-			if (box->getNumberOfFaces() > MIN_FACES) {
-				box->splitBox();
+			if (box->getNumberOfFaces() > MIN_FACES && (!box->failed[0] || !box->failed[1] || !box->failed[2])) {
+				BoundingBox* newBox = box->splitBox();
+				while (box == newBox) {
+					newBox = box->splitBox();
+				}
 				notDone = true;
 			}
 		}
@@ -323,7 +327,7 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 //Call function in calculate color, if it returns true => pixel should be black/ambiant. If it returns false => the pixel should have a color.
 bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightDirection) {
 	Tucano::Face current_face;
-	Eigen::Vector3f inter = pointP + 0.001*(lightDirection);
+	Eigen::Vector3f inter = pointP + 0.001 * (lightDirection);
 
 	// Loop through all Bounding boxes.
 	for (BoundingBox* box : BoundingBox::boxes) {
