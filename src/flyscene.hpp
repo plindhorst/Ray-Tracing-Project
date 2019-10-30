@@ -144,7 +144,7 @@ private:
 
 	bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
 
-	int max_depth = 4;
+	int max_depth = 2;
 
 public:
 	const string OBJECT_NAME = "dodgeColorTest.obj";

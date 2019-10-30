@@ -327,16 +327,17 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	}
 
 	// Reflected component
-	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal.normalized());
+	Eigen::Vector3f reflected_ray = reflect(dir.normalized(), minimum_face.normal.normalized());
 	Eigen::Vector3f offset_reflection = minimum_distance_and_point.first + (0.001 * reflected_ray);
 	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
 
 	// Refracted component
-	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
-	//Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1);
+	Eigen::Vector3f refracted_ray = refract(dir.normalized(), minimum_face);
+	Eigen::Vector3f offset_refraction = minimum_distance_and_point.first + (0.001 * refracted_ray);
+	Eigen::Vector3f refracted_color = traceRay(offset_refraction, refracted_ray, depth + 1);
 
 	// Add all colors
-	return direct_color + reflected_color.cwiseProduct(ks);
+	return (1 - transparency) * (direct_color + reflected_color.cwiseProduct(ks)) + transparency * reflected_color;
 }
 
 void Flyscene::generateBoundingBoxes() {
@@ -447,8 +448,30 @@ Eigen::Vector3f Flyscene::reflect(Eigen::Vector3f direction, Eigen::Vector3f nor
 
 
 Eigen::Vector3f Flyscene::refract(Eigen::Vector3f direction, Tucano::Face face) {
-	// TO DO: implement
-	return direction;
+	Eigen::Vector3f face_normal =  face.normal.normalized();
+	
+	// Check if ray is refracting into or out of material
+	bool incoming = false;
+	if (face_normal.dot(direction) > 0) {
+		incoming = true;
+	}
+
+	// Change optical densities accordingly
+	float n1;
+	float n2;
+	if (incoming) {
+		n1 = 1;
+		n2 = materials[face.material_id].getOpticalDensity();;
+	}
+	else {
+		n1 = materials[face.material_id].getOpticalDensity();
+		n2 = 1;
+	}
+
+	// Cross product used in further calculation
+	Eigen::Vector3f cross = direction.cross(face_normal);
+
+	return (n1 / n2) * (direction - cross) - face_normal * std::sqrt(1 - ( (n1 * n1) * (1 - (cross.dot(cross))) / (n2 * n2)));
 }
 
 bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box) {
