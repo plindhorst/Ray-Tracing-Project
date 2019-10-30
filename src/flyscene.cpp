@@ -458,8 +458,8 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 
 Eigen::Vector3f Flyscene::calculateReflectColor(Tucano::Face minimum_face, Eigen::Vector3f interPoint, Eigen::Vector3f &origin, Eigen::Vector3f &dir, int depth) {
 	// Material properties
-	float transparency = materials[minimum_face.material_id].getOpticalDensity();
 	if (minimum_face.material_id != -1) {
+		transparency = materials[minimum_face.material_id].getOpticalDensity();
 		ks = materials[minimum_face.material_id].getSpecular();
 	}
 
