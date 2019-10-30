@@ -351,7 +351,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 
 std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f &origin, Eigen::Vector3f dir) {
 	// Parameters to keep track of current faces and the closest face
-	std::pair<Eigen::Vector3f, float> minimum_distance_and_point = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
+	std::pair<Eigen::Vector3f, float> minimum_point_and_distance = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
 	Tucano::Face minimum_face;
 	std::pair<Eigen::Vector3f, float> current_distance_and_point = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
 	Tucano::Face current_face;
@@ -362,14 +362,14 @@ std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(
 			for (int i = 0; i < box->faces.size(); i++) {
 				current_face = *box->faces[i];
 				current_distance_and_point = calculateDistance(origin, dir, current_face);
-				if (0 <= current_distance_and_point.second && current_distance_and_point.second < minimum_distance_and_point.second) {
-					minimum_distance_and_point = current_distance_and_point;
+				if (0 <= current_distance_and_point.second && current_distance_and_point.second < minimum_point_and_distance.second) {
+					minimum_point_and_distance = current_distance_and_point;
 					minimum_face = current_face;
 				}
 			}
 		}
 	}
-	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = std::make_tuple(minimum_face, minimum_distance_and_point.first, minimum_distance_and_point.second);
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = std::make_tuple(minimum_face, minimum_point_and_distance.first, minimum_point_and_distance.second);
 	return tuple;
 }
 
@@ -421,18 +421,11 @@ Flyscene::~Flyscene() {
 
 
 std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face) {
-	//get vertices and normals of the face
+	//get a vertex and the normal of the face
 	Eigen::Affine3f modelMatrix = mesh.getShapeModelMatrix();
 
 	Eigen::Vector4f vec0 = mesh.getVertex(face.vertex_ids[0]);
-	Eigen::Vector4f vec1 = mesh.getVertex(face.vertex_ids[1]);
-	Eigen::Vector4f vec2 = mesh.getVertex(face.vertex_ids[2]);
-
-	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>() / vec0.w());
-	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>() / vec1.w());
-	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>() / vec2.w());
-
-	//get Normal of the face
+	Eigen::Vector3f vert0 = modelMatrix * (vec0.head<3>() / vec0.w()); // Note: w should always be 1, which may be assumed.
 	Eigen::Vector3f facenormal = face.normal.normalized();
 
 	//Return false if triangle and direction of ray are the same
@@ -449,21 +442,8 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 	float t = orthProjectionDest / (dir.dot(facenormal));
 	Eigen::Vector3f PointP = origin + t * dir;
 
-	//Inside-out test
-	Eigen::Vector3f edge0 = vert1 - vert0;
-	Eigen::Vector3f edge1 = vert2 - vert1;
-	Eigen::Vector3f edge2 = vert0 - vert2;
-
-	Eigen::Vector3f Inner0 = PointP - vert0;
-	Eigen::Vector3f Inner1 = PointP - vert1;
-	Eigen::Vector3f Inner2 = PointP - vert2;
-
-	float area0 = facenormal.dot(edge0.cross(Inner0));
-	float area1 = facenormal.dot(edge1.cross(Inner1));
-	float area2 = facenormal.dot(edge2.cross(Inner2));
-
 	//If any area is smaller or equal to zero, point is on the wrong side of the edge. 
-	if (area0 < 0 || area1 < 0 || area2 < 0) {
+	if (interpolateNormal(face, PointP).norm() == 0) {
 		std::pair<Eigen::Vector3f, float> pair;
 		pair.second = (float)-1;
 		return pair;
@@ -484,8 +464,8 @@ Eigen::Vector3f Flyscene::calculateReflectColor(Tucano::Face minimum_face, Eigen
 	}
 
 	// Reflected component
-	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal);
-	Eigen::Vector3f offset_origin = interPoint + (0.001 * reflected_ray);
+	Eigen::Vector3f reflected_ray = reflect(dir, interpolateNormal(minimum_face, interPoint));
+	Eigen::Vector3f offset_origin = interPoint + (0.003 * reflected_ray);
 	Eigen::Vector3f reflected_color = traceRay(offset_origin, reflected_ray, depth + 1);
 
 
@@ -533,7 +513,7 @@ bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Bound
 //Call function in calculate color, if it returns true => pixel should be black/ambient. If it returns false => the pixel should have a color.
 bool Flyscene::shadow(Eigen::Vector3f& pointP, Eigen::Vector3f& lightDirection) {
 	Tucano::Face current_face;
-	Eigen::Vector3f inter = pointP + 0.001 * (lightDirection);
+	Eigen::Vector3f inter = pointP + 0.003 * (lightDirection);
 
 	// Loop through all Bounding boxes.
 	for (BoundingBox* box : BoundingBox::boxes) {
@@ -577,7 +557,7 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 		transparency = material.getDissolveFactor();
 	}
 
-	Eigen::Vector3f normal = minimum_face.normal.normalized();
+	Eigen::Vector3f normal = interpolateNormal(minimum_face, pointP);
 	Eigen::Vector3f lightReflection = (lightDirection - 2 * (normal.dot(lightDirection)) * normal);
 	Eigen::Vector3f eyeDirection = (origin - pointP).normalized();
 
@@ -587,6 +567,40 @@ Eigen::Vector3f Flyscene::calcSingleColor(Tucano::Face minimum_face, Eigen::Vect
 
 	Eigen::Vector3f color = ambient + diffuse + specular;
 	return color;
+}
+
+
+/**
+	Returns an interpolated normal of the point P on the face. Returns nullvector if point does not lie on the face.
+*/
+Eigen::Vector3f Flyscene::interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP) {
+	Eigen::Affine3f M = mesh.getShapeModelMatrix();
+	Eigen::Vector3f vert0 = M * mesh.getVertex(face.vertex_ids[0]).head<3>();
+	Eigen::Vector3f vert1 = M * mesh.getVertex(face.vertex_ids[1]).head<3>();
+	Eigen::Vector3f vert2 = M * mesh.getVertex(face.vertex_ids[2]).head<3>();
+	Eigen::Vector3f facenormal = face.normal.normalized();
+
+	Eigen::Vector3f edge0 = vert1 - vert0;
+	Eigen::Vector3f edge1 = vert2 - vert1;
+	Eigen::Vector3f edge2 = vert0 - vert2;
+
+	Eigen::Vector3f Inner0 = PointP - vert0;
+	Eigen::Vector3f Inner1 = PointP - vert1;
+	Eigen::Vector3f Inner2 = PointP - vert2;
+
+	Eigen::Vector3f area0v = edge0.cross(Inner0);
+	Eigen::Vector3f area1v = edge1.cross(Inner1);
+	Eigen::Vector3f area2v = edge2.cross(Inner2);
+
+	if (facenormal.dot(area0v) < 0 || facenormal.dot(area1v) < 0 || facenormal.dot(area2v) < 0) {
+		return Eigen::Vector3f(0, 0, 0);
+	}
+	float area0 = area0v.norm() / 2;
+	float area1 = area1v.norm() / 2;
+	float area2 = area2v.norm() / 2;
+
+	float area = edge0.cross(-edge2).norm() / 2;
+	return (mesh.getNormal(face.vertex_ids[0]).normalized() * area1 / area + mesh.getNormal(face.vertex_ids[1]).normalized() * area2 / area + mesh.getNormal(face.vertex_ids[2]).normalized() * area0 / area).normalized();
 }
 
 //Call function in traceRay

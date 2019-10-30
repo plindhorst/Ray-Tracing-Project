@@ -154,6 +154,7 @@ private:
 
 	bool intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box);
 
+	Eigen::Vector3f interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP);
 
 public:
 	const string OBJECT_NAME = "dodgeColorTest.obj";
