@@ -37,7 +37,7 @@ void Flyscene::initialize(int width, int height) {
 	dirLightrep.setSize(0.15);
 
 	// create a first ray-tracing light source at some random position
-	lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(-0.5, 2.0, 3.0), Eigen::Vector3f(0, 0, 0)));
+	lights.push_back(std::pair<Eigen::Vector3f, Eigen::Vector3f>(Eigen::Vector3f(-0.5, 2.0, 3.0), Eigen::Vector3f(1, 1, 1)));
 
 	// scale the camera representation (frustum) for the ray debug
 	camerarep.shapeMatrix()->scale(0.2);
