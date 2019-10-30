@@ -75,10 +75,12 @@ public:
 	//TO DO:: insert documentation
 	void resetDebugRay();
 
-	std::pair<Tucano::Face, std::pair<Eigen::Vector3f, float>> calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir);
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir);
 
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
+
+	Eigen::Vector3f calculateReflectColor(Tucano::Face minimum_face, Eigen::Vector3f interPoint, Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth);
 
 	// TO DO: insert documentation
 	Eigen::Vector3f reflect(Eigen::Vector3f direction, Eigen::Vector3f normal);
@@ -120,10 +122,10 @@ private:
 	// Scene light represented as a camera
 	Tucano::Camera scene_light;
 
-
+	// Depth of recursive raytracing
 	const static int max_depth = 2;
 
-	/// A very thin cylinder to draw a debug ray (with the same value as max_depth)
+	//Array of cylinder for debugray, max_depth + 1 size since
 	Tucano::Shapes::Cylinder ray [max_depth + 1];
 
 	// Scene meshes

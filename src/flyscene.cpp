@@ -16,7 +16,7 @@ void Flyscene::initialize(int width, int height) {
 
 	// load the OBJ file and materials
 	Tucano::MeshImporter::loadObjFile(mesh, materials,
-		"resources/models/toy.obj");
+		"resources/models/test4.obj");
 
 
 	// normalize the model (scale to unit cube and center at origin)
@@ -134,20 +134,26 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 	// place the camera representation (frustum) on current camera location, 
 	camerarep.resetModelMatrix();
 	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
-	std::pair<Tucano::Face, std::pair<Eigen::Vector3f, float>> tuple = calculateMinimumFace(origin, dir);
-	Eigen::Vector3f color = traceRay(origin, dir, 0);
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir);
+	//Eigen::Vector3f color = traceRay(origin, dir, 0);
+	
+
 	for (int i = 1; i <= max_depth + 1; i++) {
-		ray[i - 1].setColor(Eigen::Vector4f(color.x(), color.y(), color.z(), 1));
-		if (tuple.second.second == INFINITY) {
+		Tucano::Face minimum_face = std::get<0>(tuple);
+		Eigen::Vector3f interPoint = std::get<1>(tuple);
+		float minimum_distance = std::get<2>(tuple);
+
+		//ray[i - 1].setColor(Eigen::Vector4f(color.x(), color.y(), color.z(), 1));
+		if (minimum_distance == INFINITY) {
 			ray[i- 1].setSize(0.005, 10);
 			return;
 		}
 		else {
-			ray[i - 1].setSize(0.005, tuple.second.second);
+			ray[i - 1].setSize(0.005, minimum_distance);
 			if (i != max_depth + 1) {
 				ray[i].resetModelMatrix();
-				Eigen::Vector3f direction = reflect(dir, tuple.first.normal);
-				Eigen::Vector3f start = tuple.second.first + 0.001 * direction;
+				Eigen::Vector3f direction = reflect(dir, minimum_face.normal).normalized();
+				Eigen::Vector3f start = interPoint + 0.001 * direction;
 
 				ray[i].setOriginOrientation(start, direction);
 				tuple = calculateMinimumFace(start, direction);
@@ -208,10 +214,11 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	if (depth == max_depth) {
 		return Eigen::Vector3f(0, 0, 0);
 	}
-	std::pair<Tucano::Face, std::pair<Eigen::Vector3f, float>> tuple = calculateMinimumFace(origin, dir);
-	float minimum_distance = tuple.second.second;
-	Tucano::Face minimum_face = tuple.first;
-	Eigen::Vector3f interPoint = tuple.second.first;
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir);
+	Tucano::Face minimum_face = std::get<0>(tuple);
+	Eigen::Vector3f interPoint = std::get<1>(tuple);
+	float minimum_distance = std::get<2>(tuple);
+	
 
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance == INFINITY) {
@@ -228,26 +235,12 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	// Direct color component
 	Eigen::Vector3f direct_color = calculateColor(minimum_face, origin, interPoint);
 
-	// Material properties
-	float transparency = materials[minimum_face.material_id].getOpticalDensity();
-	if (minimum_face.material_id != -1) {
-		ks = materials[minimum_face.material_id].getSpecular();
-	}
 
-	// Reflected component
-	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal.normalized());
-	Eigen::Vector3f offset_origin = interPoint + (0.001 * reflected_ray);
-	Eigen::Vector3f reflected_color = traceRay(offset_origin, reflected_ray, depth + 1);
-
-	// Refracted component
-	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
-	//Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1);
-
-	// Add all colors
+	Eigen::Vector3f reflected_color = calculateReflectColor(minimum_face, interPoint, origin, dir, depth);
 	return direct_color + reflected_color.cwiseProduct(ks);
 }
 
-std::pair<Tucano::Face, std::pair<Eigen::Vector3f, float>> Flyscene::calculateMinimumFace(Eigen::Vector3f &origin, Eigen::Vector3f dir) {
+std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f &origin, Eigen::Vector3f dir) {
 	// Parameters to keep track of current faces and the closest face
 	std::pair<Eigen::Vector3f, float> minimum_distance_and_point = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
 	Tucano::Face minimum_face;
@@ -267,7 +260,7 @@ std::pair<Tucano::Face, std::pair<Eigen::Vector3f, float>> Flyscene::calculateMi
 			}
 		}
 	}
-	std::pair<Tucano::Face, std::pair<Eigen::Vector3f, float>> tuple; tuple.first = minimum_face; tuple.second = minimum_distance_and_point;
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = std::make_tuple(minimum_face, minimum_distance_and_point.first, minimum_distance_and_point.second);
 	return tuple;
 }
 
@@ -326,8 +319,6 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 	Eigen::Vector3f vert1 = modelMatrix * (vec1.head<3>() / vec1.w());
 	Eigen::Vector3f vert2 = modelMatrix * (vec2.head<3>() / vec2.w());
 
-
-
 	//get Normal of the face
 	Eigen::Vector3f facenormal = face.normal.normalized();
 
@@ -370,6 +361,28 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 		pair.second = t;
 		return pair;
 	}
+}
+
+Eigen::Vector3f Flyscene::calculateReflectColor(Tucano::Face minimum_face, Eigen::Vector3f interPoint, Eigen::Vector3f &origin, Eigen::Vector3f &dir, int depth) {
+
+
+	// Material properties
+	float transparency = materials[minimum_face.material_id].getOpticalDensity();
+	if (minimum_face.material_id != -1) {
+		ks = materials[minimum_face.material_id].getSpecular();
+	}
+
+	// Reflected component
+	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal);
+	Eigen::Vector3f offset_origin = interPoint + (0.001 * reflected_ray);
+	Eigen::Vector3f reflected_color = traceRay(offset_origin, reflected_ray, depth + 1);
+
+
+	// Refracted component
+	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
+	//Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1);
+	return reflected_color.cwiseProduct(ks);
+
 }
 
 Eigen::Vector3f Flyscene::reflect(Eigen::Vector3f direction, Eigen::Vector3f normal) {
