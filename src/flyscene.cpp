@@ -150,7 +150,13 @@ void Flyscene::raytraceScene(int width, int height) {
 
 	std::vector<std::thread> threads;
 
-	COUNT = 0;
+	// Check if image size can be divided by the number of threads
+	if (image_size[1] % THREADS != 0) {
+		std::cout << "Error: Incorrect number of threads" << std::endl;
+		return;
+	}
+
+	PIXEL_COUNT = 0;
 	int start = 0;
 	int pixels = image_size[1] / THREADS;
 	for (int i = 0; i < THREADS; i++) {
@@ -158,10 +164,11 @@ void Flyscene::raytraceScene(int width, int height) {
 		start += pixels;
 	}
 
-	while (COUNT < 1000) {
-		std::cout << "\r" << (COUNT + 1) << "/" << image_size[1];
+	while (PIXEL_COUNT < 1000) {
+		std::cout << "\r" << (PIXEL_COUNT + 1) << "/" << image_size[1];
 	}
 
+	// Wait for all threads to end
 	for (std::thread& t : threads) {
 		t.join();
 	}
@@ -182,10 +189,12 @@ void Flyscene::traceRayThread(int h, int w, int start, int stop, vector<vector<E
 	// for every pixel shoot a ray from the origin through the pixel coords
 	for (int j = start; j < stop; ++j) {
 		for (int i = 0; i < h; ++i) {
+			// create a ray from the camera passing through the pixel (i,j)
 			direction = (flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin).normalized();
+			// launch raytracing for the given ray and write result to pixel data
 			pixel_data[j][i] = traceRay(origin, direction);
 		}
-		COUNT++;
+		PIXEL_COUNT++;
 	}
 }
 

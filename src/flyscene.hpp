@@ -81,7 +81,7 @@ public:
 	Eigen::Vector3f calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir);
 
 private:
-	int COUNT;
+	int PIXEL_COUNT;
 
 	// A simple phong shader for rendering meshes
 	Tucano::Effects::PhongMaterial phong;
