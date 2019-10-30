@@ -55,7 +55,7 @@ public:
 		float r, g, b;
 		std::string l = "";
 		while (!rightColor) {
-			std::cout << " What colour do you want? " << std::endl;
+			std::cout << " What colour do you want in rgb format? (Enter three numbers seperately between 1 and 0)" << std::endl;
 			std::cin >> r >> g >> b;
 			while (std::cin.fail()) {
 				std::cout << "Error" << std::endl;
@@ -95,7 +95,6 @@ public:
 			std::cout << " What direction do you want the directional light to point at? " << std::endl;
 			bool rightDir = false;
 			float x, y, z;
-			std::cout << " What colour do you want? " << std::endl;
 			std::cin >> x >> y >> z;
 			while (std::cin.fail()) {
 				std::cout << "Error" << std::endl;
