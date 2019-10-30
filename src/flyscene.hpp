@@ -50,7 +50,7 @@ public:
 	/**
 	 * @brief Add a new light source
 	 */
-	void addLight(void) { lights.push_back(flycamera.getCenter()); }
+	void addLight();
 
 	/**
 	 * @brief Create a debug ray at the current camera location and passing
@@ -77,8 +77,16 @@ public:
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
 
-	// TO DO: insert documentation
-	Eigen::Vector3f calculateColor(float minimum_distance, Tucano::Face& minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& dir);
+  /**
+  *Check if light is obstructed
+  */
+  bool shadow(Eigen::Vector3f& dest, Eigen::Vector3f& light);
+
+  void sphericalLight(std::pair<Eigen::Vector3f, Eigen::Vector3f> lightLoc, float radius, int nLightpoints);
+
+  Eigen::Vector3f calcSingleColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f lightDirection, Eigen::Vector3f light_intensity, Eigen::Vector3f& pointP);
+
+  Eigen::Vector3f calculateColor(Tucano::Face minimum_face, Eigen::Vector3f& origin, Eigen::Vector3f& pointP);
 
 private:
 	int PIXEL_COUNT;
@@ -99,9 +107,16 @@ private:
 	// a frustum to represent the camera in the scene
 	Tucano::Shapes::Sphere lightrep;
 
-	// light sources for ray tracing
-	vector<Eigen::Vector3f> lights;
+	Tucano::Shapes::Arrow dirLightrep;
 
+	public: // so we can remove all lights
+	// light sources for ray tracing
+	vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> lights;
+
+	// the directional lights
+	vector<std::tuple<Eigen::Vector3f, Eigen::Vector3f, Eigen::Quaternion<float>>> dirLights;
+
+	private:
 	// Scene light represented as a camera
 	Tucano::Camera scene_light;
 
@@ -124,10 +139,14 @@ private:
 	Eigen::Vector3f interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP);
 
 public:
+	const string OBJECT_NAME = "dodgeColorTest.obj";
+
 	static const bool RENDER_BOUNDINGBOXES = false;
-	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = true;
+	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
 	const int MIN_FACES = 300;
 	const int MAX_BOXES = INT_MAX;
+
+	static std::unordered_map<Tucano::Face*, int> faceids;
 
 	static const int THREADS = 20;
 
@@ -141,8 +160,6 @@ public:
 	float shininess = 0;
 	float refraction_index = 0;
 	float transparency = 0;
-
-	static std::unordered_map<Tucano::Face*, int> faceids;
 	~Flyscene();
 };
 
