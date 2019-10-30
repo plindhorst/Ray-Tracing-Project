@@ -168,7 +168,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 			ray[i - 1].setSize(0.005, minimum_distance);
 			if (i != max_depth) {
 				ray[i].resetModelMatrix();
-				Eigen::Vector3f direction = reflect(dir, minimum_face.normal).normalized();
+				Eigen::Vector3f direction = reflect(dir, interpolateNormal(minimum_face, interPoint));
 				Eigen::Vector3f start = interPoint + 0.001 * direction;
 				ray[i].setOriginOrientation(start, direction);
 				tuple = calculateMinimumFace(start, direction);
