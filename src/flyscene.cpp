@@ -356,10 +356,12 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
 
 	// Refracted component
-	Eigen::Vector3f refracted_ray = refract(dir.normalized(), minimum_face);
-	Eigen::Vector3f offset_refraction = interPoint + (0.001 * refracted_ray);
-	Eigen::Vector3f refracted_color = traceRay(offset_refraction, refracted_ray, depth + 1);
-
+	if (transparency != 0) {
+		Eigen::Vector3f refracted_ray = refract(dir.normalized(), minimum_face);
+		Eigen::Vector3f offset_refraction = interPoint + (0.001 * refracted_ray);
+		Eigen::Vector3f refracted_color = traceRay(offset_refraction, refracted_ray, depth + 1);
+	}
+	
 	// Add all colors
 	return (1 - transparency) * (direct_color + reflected_color.cwiseProduct(ks)) + transparency * reflected_color;
 }
