@@ -286,7 +286,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	}
 	
 	// Parameters to keep track of current faces and the closest face
-	std::pair<Eigen::Vector3f, float> minimum_distance_and_point = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
+	std::pair<Eigen::Vector3f, float> minimum_point_and_distance = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
 	Tucano::Face minimum_face;
 	std::pair<Eigen::Vector3f, float> current_distance_and_point = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
 	Tucano::Face current_face;
@@ -297,8 +297,8 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 			for (int i = 0; i < box->faces.size(); i++) {
 				current_face = *box->faces[i];
 				current_distance_and_point = calculateDistance(origin, dir, current_face);
-				if (0 <= current_distance_and_point.second && current_distance_and_point.second < minimum_distance_and_point.second) {
-					minimum_distance_and_point = current_distance_and_point;
+				if (0 <= current_distance_and_point.second && current_distance_and_point.second < minimum_point_and_distance.second) {
+					minimum_point_and_distance = current_distance_and_point;
 					minimum_face = current_face;
 				}
 			}
@@ -306,7 +306,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	}
 
 	// Test if the ray intersected with a face, if so: calculate the color
-	if (minimum_distance_and_point.second == INFINITY) {
+	if (minimum_point_and_distance.second == INFINITY) {
 		if (depth == 0) {
 			return BACKGROUND_COLOR;
 		}
@@ -318,7 +318,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 
 	// RECURSIVELY CALCULATE COLOR
 	// Direct color component
-	Eigen::Vector3f direct_color = calculateColor(minimum_face, origin, minimum_distance_and_point.first);
+	Eigen::Vector3f direct_color = calculateColor(minimum_face, origin, minimum_point_and_distance.first);
 
 	// Material properties
 	float transparency = materials[minimum_face.material_id].getOpticalDensity();
@@ -327,8 +327,8 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	}
 
 	// Reflected component
-	Eigen::Vector3f reflected_ray = reflect(dir, minimum_face.normal.normalized());
-	Eigen::Vector3f offset_reflection = minimum_distance_and_point.first + (0.001 * reflected_ray);
+	Eigen::Vector3f reflected_ray = reflect(dir, interpolateNormal(minimum_face, minimum_point_and_distance.first));
+	Eigen::Vector3f offset_reflection = minimum_point_and_distance.first + (0.001 * reflected_ray);
 	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
 
 	// Refracted component

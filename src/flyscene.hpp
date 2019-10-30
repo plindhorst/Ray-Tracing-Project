@@ -149,7 +149,7 @@ private:
 	int max_depth = 4;
 
 public:
-	const string OBJECT_NAME = "toy.obj";
+	const string OBJECT_NAME = "dodgeColorTest.obj";
 
 	static const bool RENDER_BOUNDINGBOXES = false;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
