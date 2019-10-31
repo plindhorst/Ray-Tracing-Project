@@ -355,14 +355,16 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
 
 	// Refracted component
-	if (transparency != 0) {
-		Eigen::Vector3f refracted_ray = refract(dir.normalized(), minimum_face);
+		Eigen::Vector3f refracted_ray = refract(dir.normalized(), minimum_face, interPoint);
 		Eigen::Vector3f offset_refraction = interPoint + (0.001 * refracted_ray);
 		Eigen::Vector3f refracted_color = traceRay(offset_refraction, refracted_ray, depth + 1);
-	}
 	
 	// Add all colors
-	return direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks) + transparency * reflected_color;
+	Eigen::Vector3f color2 = (direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks) + transparency * refracted_color)/2;
+	color2(0) = max(min(color2(0), 1.f), 0.f);
+	color2(1) = max(min(color2(1), 1.f), 0.f);
+	color2(2) = max(min(color2(2), 1.f), 0.f);
+	return color2;
 }
 
 std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir) {
@@ -496,12 +498,12 @@ Eigen::Vector3f Flyscene::reflect(Eigen::Vector3f direction, Eigen::Vector3f nor
 }
 
 
-Eigen::Vector3f Flyscene::refract(Eigen::Vector3f direction, Tucano::Face face) {
-	Eigen::Vector3f face_normal =  face.normal.normalized();
+Eigen::Vector3f Flyscene::refract(Eigen::Vector3f direction, Tucano::Face face, Eigen::Vector3f PointP) {
+	Eigen::Vector3f face_normal = interpolateNormal(face, PointP);
 	
 	// Check if ray is refracting into or out of material
 	bool incoming = false;
-	if (face_normal.dot(direction) > 0) {
+	if (face_normal.dot(direction) < 0) {
 		incoming = true;
 	}
 

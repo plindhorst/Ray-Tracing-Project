@@ -88,7 +88,7 @@ public:
 	Eigen::Vector3f reflect(Eigen::Vector3f direction, Eigen::Vector3f normal);
 
 	// TO DO: insert documentation
-	Eigen::Vector3f refract(Eigen::Vector3f direction, Tucano::Face face);
+	Eigen::Vector3f refract(Eigen::Vector3f direction, Tucano::Face face, Eigen::Vector3f PointP);
 
 
 	/**
@@ -157,7 +157,7 @@ private:
 	Eigen::Vector3f interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP);
 
 public:
-	const string OBJECT_NAME = "reflectivityy.obj";
+	const string OBJECT_NAME = "glas2.obj";
 
 	static const bool RENDER_BOUNDINGBOXES = false;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
