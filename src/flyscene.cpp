@@ -354,12 +354,15 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	Eigen::Vector3f offset_reflection = interPoint + (0.001 * reflected_ray);
 	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
 
+	// Refracted component
+	if (transparency != 0) {
+		Eigen::Vector3f refracted_ray = refract(dir.normalized(), minimum_face);
+		Eigen::Vector3f offset_refraction = interPoint + (0.001 * refracted_ray);
+		Eigen::Vector3f refracted_color = traceRay(offset_refraction, refracted_ray, depth + 1);
+	}
+	
 	// Add all colors
-	Eigen::Vector3f color2 = (direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks))/2;
-	color2(0) = max(min(color2(0), 1.f), 0.f);
-	color2(1) = max(min(color2(1), 1.f), 0.f);
-	color2(2) = max(min(color2(2), 1.f), 0.f);
-	return color2;
+	return direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks) + transparency * reflected_color;
 }
 
 std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir) {
@@ -494,8 +497,30 @@ Eigen::Vector3f Flyscene::reflect(Eigen::Vector3f direction, Eigen::Vector3f nor
 
 
 Eigen::Vector3f Flyscene::refract(Eigen::Vector3f direction, Tucano::Face face) {
-	// TO DO: implement
-	return direction;
+	Eigen::Vector3f face_normal =  face.normal.normalized();
+	
+	// Check if ray is refracting into or out of material
+	bool incoming = false;
+	if (face_normal.dot(direction) > 0) {
+		incoming = true;
+	}
+
+	// Change optical densities accordingly
+	float n1;
+	float n2;
+	if (incoming) {
+		n1 = 1;
+		n2 = materials[face.material_id].getOpticalDensity();;
+	}
+	else {
+		n1 = materials[face.material_id].getOpticalDensity();
+		n2 = 1;
+	}
+
+	// Cross product used in further calculation
+	Eigen::Vector3f cross = direction.cross(face_normal);
+
+	return (n1 / n2) * (direction - cross) - face_normal * std::sqrt(1 - ( (n1 * n1) * (1 - (cross.dot(cross))) / (n2 * n2)));
 }
 
 bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box) {
