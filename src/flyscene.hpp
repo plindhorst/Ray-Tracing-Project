@@ -70,14 +70,14 @@ public:
 	 * @param dest Other point on the ray, usually screen coordinates
 	 * @return a RGB color
 	 */
-	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth);
+	Eigen::Vector3f traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth, bool debug);
 
 	void traceRayThread(int h, int w, int start, int stop, vector<vector<Eigen::Vector3f>>& pixel_data);
 
 	//TO DO:: insert documentation
 	void resetDebugRay();
 
-	std::tuple<Tucano::Face, Eigen::Vector3f, float> calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir);
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir, bool debug);
 
 	// TO DO: insert documentation
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
@@ -157,12 +157,14 @@ private:
 	Eigen::Vector3f interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP);
 
 public:
-	const string OBJECT_NAME = "bunny.obj";
+	const string OBJECT_NAME = "dodgeColorTest.obj";
 
 	static const bool RENDER_BOUNDINGBOXES = false;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = true;
 	const int MIN_FACES = 300;
 	const int MAX_BOXES = INT_MAX;
+
+	std::vector<BoundingBox*> debugBoxes;
 
 	static const int THREADS = 20;
 
