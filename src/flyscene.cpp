@@ -154,7 +154,8 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 	Eigen::Vector3f color = traceRay(origin, dir, 0);
 
 
-	for (int i = 1; i <= max_depth; i++) {
+	for (int i = 1; i <= max_depth; i++)
+	{
 		Tucano::Face minimum_face = std::get<0>(tuple);
 		Eigen::Vector3f interPoint = std::get<1>(tuple);
 		float minimum_distance = std::get<2>(tuple);
@@ -173,7 +174,6 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 				ray[i].setOriginOrientation(start, direction);
 				tuple = calculateMinimumFace(start, direction);
 			}
-
 		}
 	}
 }
@@ -328,7 +328,6 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	Eigen::Vector3f interPoint = std::get<1>(tuple);
 	float minimum_distance = std::get<2>(tuple);
 
-
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance == INFINITY) {
 		if (depth == 0) {
@@ -356,7 +355,11 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
 
 	// Add all colors
-	return (direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks));
+	Eigen::Vector3f color2 = (direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks))/2;
+	color2(0) = max(min(color2(0), 1.f), 0.f);
+	color2(1) = max(min(color2(1), 1.f), 0.f);
+	color2(2) = max(min(color2(2), 1.f), 0.f);
+	return color2;
 }
 
 std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir) {
@@ -624,5 +627,5 @@ Eigen::Vector3f Flyscene::calculateColor(Tucano::Face minimum_face, Eigen::Vecto
 	for (int i = 0; i < dirLights.size(); i++) {
 		sumColor += calcSingleColor(minimum_face, origin, get<0>(dirLights[i]), get<1>(dirLights[i]), pointP);
 	}
-	return Eigen::Vector3f(min(sumColor.x(), 1.f), min(sumColor.y(), 1.f), min(sumColor.z(), 1.f));
+	return Eigen::Vector3f(max(min(sumColor.x(), 1.f), 0.f), max(min(sumColor.y(), 1.f), 0.f), max(min(sumColor.z(), 1.f), 0.f));
 }

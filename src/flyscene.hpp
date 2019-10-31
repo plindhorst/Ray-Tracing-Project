@@ -157,7 +157,7 @@ private:
 	Eigen::Vector3f interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP);
 
 public:
-	const string OBJECT_NAME = "cube.obj";
+	const string OBJECT_NAME = "reflectivityy.obj";
 
 	static const bool RENDER_BOUNDINGBOXES = false;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
@@ -175,9 +175,9 @@ public:
 	Eigen::Vector3f ka = Eigen::Vector3f(0.2, 0.2, 0.2);
 	Eigen::Vector3f kd = Eigen::Vector3f(0.9, 0.9, 0);
 	Eigen::Vector3f ks = Eigen::Vector3f(0, 0, 0);
-	float shininess = 0;
-	float refraction_index = 0;
-	float transparency = 0;
+	float shininess = 0.f;
+	float refraction_index = 0.f;
+	float transparency = 0.f;
 	~Flyscene();
 };
 
