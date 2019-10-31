@@ -6,8 +6,6 @@
 #include "flyscene.hpp"
 #include <GLFW/glfw3.h>
 
-std::unordered_map<Tucano::Face*, int> Flyscene::faceids;
-
 void Flyscene::initialize(int width, int height) {
 	// initiliaze the Phong Shading effect for the Opengl Previewer
 	phong.initialize();
@@ -60,16 +58,8 @@ void Flyscene::initialize(int width, int height) {
 	//   std::cout<<"mat id "<<face.material_id<<std::endl<<std::endl;
 	//   std::cout<<"face   normal "<<face.normal.transpose() << std::endl << std::endl;
 	// }
-
+	
 	generateBoundingBoxes();
-
-	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
-		// Create face pointer to id map.
-		faceids = std::unordered_map<Tucano::Face*, int>(mesh.getNumberOfFaces());
-		for (int i = 0; i < mesh.getNumberOfFaces(); i++) {
-			faceids.insert(std::pair<Tucano::Face*, int>(&mesh.getFace(i), i));
-		}
-	}
 	createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 }
 
@@ -123,12 +113,12 @@ void Flyscene::simulate(GLFWwindow* window) {
 	// Update the camera.
 	// NOTE(mickvangelderen): GLFW 3.2 has a problem on ubuntu where some key
 	// events are repeated: https://github.com/glfw/glfw/issues/747. Sucks.
-	float dx = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS ? 0.5 : 0.0) -
+	float dx = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS ? 0.1 : 0.0) -
 		(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS ? 0.5 : 0.0);
-	float dy = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ? 0.5 : 0.0) -
-		(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ? 0.5 : 0.0);
-	float dz = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ? 0.5 : 0.0) -
-		(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ? 0.5 : 0.0);
+	float dy = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ? 0.1 : 0.0) -
+		(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ? 0.1 : 0.0);
+	float dz = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ? 0.1 : 0.0) -
+		(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ? 0.1 : 0.0);
 	flycamera.translate(dx, dy, dz);
 }
 
@@ -335,8 +325,21 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 		}
 		return Eigen::Vector3f(0, 0, 0);
 	}
-	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
-		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
+
+	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) { // Neat Maps had to be removed as their behavior was inconsistent and buggy.
+		Eigen::Vector3f color = Eigen::Vector3f(0, 0, 0);
+		int number = 0;
+		for (BoundingBox* box : BoundingBox::boxes) {
+			if (box->hasFace(minimum_face)) {
+				color += box->color;
+			}
+		}
+		if (number == 0) {
+			return color;
+		}
+		else {
+			return color / number;
+		}
 	}
 
 	// RECURSIVELY CALCULATE COLOR
@@ -355,7 +358,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
 
 	// Add all colors
-	Eigen::Vector3f color2 = (direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks))/2;
+	Eigen::Vector3f color2 = (direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks)) / 2;
 	color2(0) = max(min(color2(0), 1.f), 0.f);
 	color2(1) = max(min(color2(1), 1.f), 0.f);
 	color2(2) = max(min(color2(2), 1.f), 0.f);
@@ -389,7 +392,6 @@ std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(
 
 void Flyscene::generateBoundingBoxes() {
 	BoundingBox::mesh = &mesh;
-	BoundingBox::triangleColors = std::vector<Eigen::Vector3f>(mesh.getNumberOfFaces(), Eigen::Vector3f(-1, -1, -1));
 	BoundingBox* box = new BoundingBox(true);
 	box->fitMesh();
 

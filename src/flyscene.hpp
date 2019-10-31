@@ -145,7 +145,7 @@ private:
 	Tucano::Mesh mesh;
 
 	/// MTL materials
-	vector<Tucano::Material::Mtl> materials;
+	vector<Tucano::Material::Mtl> materials = vector<Tucano::Material::Mtl>();
 
 	// SELFMADE
 
@@ -157,14 +157,12 @@ private:
 	Eigen::Vector3f interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP);
 
 public:
-	const string OBJECT_NAME = "reflectivityy.obj";
+	const string OBJECT_NAME = "toy.obj";
 
 	static const bool RENDER_BOUNDINGBOXES = false;
-	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
+	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = true;
 	const int MIN_FACES = 300;
 	const int MAX_BOXES = INT_MAX;
-
-	static std::unordered_map<Tucano::Face*, int> faceids;
 
 	static const int THREADS = 20;
 

@@ -11,7 +11,6 @@ class BoundingBox
 {
 	public:
 	static std::vector<BoundingBox*> boxes;
-	static std::vector<Eigen::Vector3f> triangleColors;
 	static Tucano::Mesh* mesh;
 	bool failed[3] = {false, false, false};
 

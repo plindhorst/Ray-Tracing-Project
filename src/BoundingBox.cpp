@@ -2,7 +2,6 @@
 #include "flyscene.hpp"
 
 std::vector<BoundingBox*> BoundingBox::boxes = std::vector<BoundingBox*>();
-std::vector<Eigen::Vector3f> BoundingBox::triangleColors;
 Tucano::Mesh* BoundingBox::mesh = nullptr;
 
 BoundingBox::BoundingBox(bool remember) {
@@ -163,17 +162,6 @@ float BoundingBox::averageVertexCoord(int axis) {
 
 void BoundingBox::setRandomColor() {
 	color = Eigen::Vector3f(rand() / (float)RAND_MAX, rand() / (float)RAND_MAX, rand() / (float)RAND_MAX);
-	if (Flyscene::RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
-		for (Tucano::Face* face : faces) {
-			int id = Flyscene::faceids[face];
-			if (triangleColors[id](0) == -1) {
-				triangleColors[id] = color;
-			}
-			else {
-				triangleColors[id] = (triangleColors[id] + color) / 2;
-			}
-		}
-	}
 }
 
 int BoundingBox::getNumberOfFaces() {
