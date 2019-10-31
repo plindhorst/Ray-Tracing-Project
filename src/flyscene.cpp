@@ -363,11 +363,12 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1, debug);
 
 	// Add all colors
-	Eigen::Vector3f color2 = direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks);
+	Eigen::Vector3f color2 = direct_color + reflected_color.cwiseProduct(ks);
 	color2(0) = max(min(color2(0), 1.f), 0.f);
 	color2(1) = max(min(color2(1), 1.f), 0.f);
 	color2(2) = max(min(color2(2), 1.f), 0.f);
 	return color2;
+}
 }
 
 std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir, bool debug) {
