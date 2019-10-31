@@ -144,8 +144,8 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 	// place the camera representation (frustum) on current camera location, 
 	camerarep.resetModelMatrix();
 	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
-	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir, true);
-	Eigen::Vector3f color = traceRay(origin, dir, 0, true);
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir, RENDER_DEBUG_BOXES);
+	Eigen::Vector3f color = traceRay(origin, dir, 0, RENDER_DEBUG_BOXES);
 
 
 	for (int i = 1; i <= max_depth; i++)
@@ -166,7 +166,7 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 				Eigen::Vector3f direction = reflect(dir, interpolateNormal(minimum_face, interPoint));
 				Eigen::Vector3f start = interPoint + 0.001 * direction;
 				ray[i].setOriginOrientation(start, direction);
-				tuple = calculateMinimumFace(start, direction, true);
+				tuple = calculateMinimumFace(start, direction, RENDER_DEBUG_BOXES);
 			}
 		}
 	}
