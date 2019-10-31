@@ -58,7 +58,7 @@ void Flyscene::initialize(int width, int height) {
 	//   std::cout<<"mat id "<<face.material_id<<std::endl<<std::endl;
 	//   std::cout<<"face   normal "<<face.normal.transpose() << std::endl << std::endl;
 	// }
-	
+
 	generateBoundingBoxes();
 	createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 }
@@ -363,7 +363,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1, debug);
 
 	// Add all colors
-	Eigen::Vector3f color2 = (direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks)) / 2;
+	Eigen::Vector3f color2 = direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks);
 	color2(0) = max(min(color2(0), 1.f), 0.f);
 	color2(1) = max(min(color2(1), 1.f), 0.f);
 	color2(2) = max(min(color2(2), 1.f), 0.f);
@@ -477,33 +477,8 @@ std::pair<Eigen::Vector3f, float> Flyscene::calculateDistance(Eigen::Vector3f& o
 	}
 }
 
-Eigen::Vector3f Flyscene::calculateReflectColor(Tucano::Face minimum_face, Eigen::Vector3f interPoint, Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth) {
-	// Material properties
-	if (minimum_face.material_id != -1) {
-		transparency = materials[minimum_face.material_id].getOpticalDensity();
-		ks = materials[minimum_face.material_id].getSpecular();
-	}
-
-	// Reflected component
-	Eigen::Vector3f reflected_ray = reflect(dir, interpolateNormal(minimum_face, interPoint));
-	Eigen::Vector3f offset_origin = interPoint + (0.003 * reflected_ray);
-	Eigen::Vector3f reflected_color = traceRay(offset_origin, reflected_ray, depth + 1, false);
-
-
-	// Refracted component
-	//Eigen::Vector3f refracted_ray = refract(dir, minimum_face);
-	//Eigen::Vector3f refracted_color = traceRay(intersection_point, refracted_ray, depth + 1);
-	return reflected_color.cwiseProduct(ks);
-}
-
 Eigen::Vector3f Flyscene::reflect(Eigen::Vector3f direction, Eigen::Vector3f normal) {
 	return (direction - 2 * (direction.dot(normal) * normal)).normalized();
-}
-
-
-Eigen::Vector3f Flyscene::refract(Eigen::Vector3f direction, Tucano::Face face) {
-	// TO DO: implement
-	return direction;
 }
 
 bool Flyscene::intersectBox(Eigen::Vector3f& origin, Eigen::Vector3f& dir, BoundingBox& box) {
