@@ -74,22 +74,25 @@ public:
 
 	void traceRayThread(int h, int w, int start, int stop, vector<vector<Eigen::Vector3f>>& pixel_data);
 
-	//TO DO:: insert documentation
+	/**
+	 * Reset the debug ray
+	 **/
 	void resetDebugRay();
 
+	/**
+	 * Compute the first face the ray impacts with, returns the face, the exact point of impact, and the distance
+	 **/
 	std::tuple<Tucano::Face, Eigen::Vector3f, float> calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir, bool debug);
 
-	// TO DO: insert documentation
+	/**
+	 * Calculate the distance between the ray and the face (if it exists)
+	 **/
 	std::pair<Eigen::Vector3f, float> calculateDistance(Eigen::Vector3f& origin, Eigen::Vector3f& dir, Tucano::Face& face);
 
-	Eigen::Vector3f calculateReflectColor(Tucano::Face minimum_face, Eigen::Vector3f interPoint, Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth);
-
-	// TO DO: insert documentation
+	/**
+	 * Reflect the given ray
+	 **/
 	Eigen::Vector3f reflect(Eigen::Vector3f direction, Eigen::Vector3f normal);
-
-	// TO DO: insert documentation
-	Eigen::Vector3f refract(Eigen::Vector3f direction, Tucano::Face face);
-
 
 	/**
 	*Check if light is obstructed
@@ -124,14 +127,14 @@ private:
 
 	Tucano::Shapes::Arrow dirLightrep;
 
-	public: // so we can remove all lights
-	// light sources for ray tracing
+public: // so we can remove all lights
+// light sources for ray tracing
 	vector<std::pair<Eigen::Vector3f, Eigen::Vector3f>> lights;
 
 	// the directional lights
 	vector<std::tuple<Eigen::Vector3f, Eigen::Vector3f, Eigen::Quaternion<float>>> dirLights;
 
-	private:
+private:
 	// Scene light represented as a camera
 	Tucano::Camera scene_light;
 
@@ -139,7 +142,7 @@ private:
 	const static int max_depth = 2;
 
 	//Array of cylinder for debugray
-	Tucano::Shapes::Cylinder ray [max_depth];
+	Tucano::Shapes::Cylinder ray[max_depth];
 
 	// Scene meshes
 	Tucano::Mesh mesh;
@@ -157,7 +160,7 @@ private:
 	Eigen::Vector3f interpolateNormal(Tucano::Face& face, Eigen::Vector3f PointP);
 
 public:
-	const string OBJECT_NAME = "groupScene6.obj";
+	const string OBJECT_NAME = "dodgeColorTest.obj";
 
 	static const bool RENDER_BOUNDINGBOXES = false;
 	static const bool RENDER_BOUNDINGBOX_COLORED_TRIANGLES = false;
