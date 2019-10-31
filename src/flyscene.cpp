@@ -6,8 +6,6 @@
 #include "flyscene.hpp"
 #include <GLFW/glfw3.h>
 
-std::unordered_map<Tucano::Face*, int> Flyscene::faceids;
-
 void Flyscene::initialize(int width, int height) {
 	// initiliaze the Phong Shading effect for the Opengl Previewer
 	phong.initialize();
@@ -60,16 +58,8 @@ void Flyscene::initialize(int width, int height) {
 	//   std::cout<<"mat id "<<face.material_id<<std::endl<<std::endl;
 	//   std::cout<<"face   normal "<<face.normal.transpose() << std::endl << std::endl;
 	// }
-
+	
 	generateBoundingBoxes();
-
-	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
-		// Create face pointer to id map.
-		faceids = std::unordered_map<Tucano::Face*, int>(mesh.getNumberOfFaces());
-		for (int i = 0; i < mesh.getNumberOfFaces(); i++) {
-			faceids.insert(std::pair<Tucano::Face*, int>(&mesh.getFace(i), i));
-		}
-	}
 	createDebugRay(Eigen::Vector2f(width / 2.0, height / 2.0));
 }
 
@@ -95,6 +85,10 @@ void Flyscene::paintGL(void) {
 		ray[a].render(flycamera, scene_light);
 	}
 	camerarep.render(flycamera, scene_light);
+
+	for (BoundingBox* box : debugBoxes) {
+		box->render(flycamera, scene_light);
+	}
 
 	// render ray tracing light sources as yellow spheres
 	for (int i = 0; i < lights.size(); ++i) {
@@ -123,12 +117,12 @@ void Flyscene::simulate(GLFWwindow* window) {
 	// Update the camera.
 	// NOTE(mickvangelderen): GLFW 3.2 has a problem on ubuntu where some key
 	// events are repeated: https://github.com/glfw/glfw/issues/747. Sucks.
-	float dx = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS ? 0.5 : 0.0) -
-		(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS ? 0.5 : 0.0);
-	float dy = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ? 0.5 : 0.0) -
-		(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ? 0.5 : 0.0);
-	float dz = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ? 0.5 : 0.0) -
-		(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ? 0.5 : 0.0);
+	float dx = (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS ? 0.2 : 0.0) -
+		(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS ? 0.2 : 0.0);
+	float dy = (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS ? 0.2 : 0.0) -
+		(glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS ? 0.2 : 0.0);
+	float dz = (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ? 0.2 : 0.0) -
+		(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ? 0.2 : 0.0);
 	flycamera.translate(dx, dy, dz);
 }
 
@@ -150,11 +144,12 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 	// place the camera representation (frustum) on current camera location, 
 	camerarep.resetModelMatrix();
 	camerarep.setModelMatrix(flycamera.getViewMatrix().inverse());
-	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir);
-	Eigen::Vector3f color = traceRay(origin, dir, 0);
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir, true);
+	Eigen::Vector3f color = traceRay(origin, dir, 0, true);
 
 
-	for (int i = 1; i <= max_depth; i++) {
+	for (int i = 1; i <= max_depth; i++)
+	{
 		Tucano::Face minimum_face = std::get<0>(tuple);
 		Eigen::Vector3f interPoint = std::get<1>(tuple);
 		float minimum_distance = std::get<2>(tuple);
@@ -171,14 +166,14 @@ void Flyscene::createDebugRay(const Eigen::Vector2f& mouse_pos) {
 				Eigen::Vector3f direction = reflect(dir, interpolateNormal(minimum_face, interPoint));
 				Eigen::Vector3f start = interPoint + 0.001 * direction;
 				ray[i].setOriginOrientation(start, direction);
-				tuple = calculateMinimumFace(start, direction);
+				tuple = calculateMinimumFace(start, direction, true);
 			}
-
 		}
 	}
 }
 
 void Flyscene::resetDebugRay() {
+	debugBoxes.clear();
 	for (int i = 0; i < max_depth; i++) {
 		ray[i].setSize(0, 0);
 	}
@@ -312,22 +307,21 @@ void Flyscene::traceRayThread(int h, int w, int start, int stop, vector<vector<E
 			// create a ray from the camera passing through the pixel (i,j)
 			direction = (flycamera.screenToWorld(Eigen::Vector2f(i, j)) - origin).normalized();
 			// launch raytracing for the given ray and write result to pixel data
-			pixel_data[j][i] = traceRay(origin, direction, 0);
+			pixel_data[j][i] = traceRay(origin, direction, 0, false);
 		}
 		PIXEL_COUNT++;
 	}
 }
 
 
-Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth) {
+Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir, int depth, bool debug) {
 	if (depth == max_depth) {
 		return Eigen::Vector3f(0, 0, 0);
 	}
-	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir);
+	std::tuple<Tucano::Face, Eigen::Vector3f, float> tuple = calculateMinimumFace(origin, dir, debug);
 	Tucano::Face minimum_face = std::get<0>(tuple);
 	Eigen::Vector3f interPoint = std::get<1>(tuple);
 	float minimum_distance = std::get<2>(tuple);
-
 
 	// Test if the ray intersected with a face, if so: calculate the color
 	if (minimum_distance == INFINITY) {
@@ -336,8 +330,21 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 		}
 		return Eigen::Vector3f(0, 0, 0);
 	}
-	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) {
-		return BoundingBox::triangleColors.at(faceids[&minimum_face]);
+
+	if (RENDER_BOUNDINGBOX_COLORED_TRIANGLES) { // Neat Maps had to be removed as their behavior was inconsistent and buggy.
+		Eigen::Vector3f color = Eigen::Vector3f(0, 0, 0);
+		int number = 0;
+		for (BoundingBox* box : BoundingBox::boxes) {
+			if (box->hasFace(minimum_face)) {
+				color += box->color;
+			}
+		}
+		if (number == 0) {
+			return color;
+		}
+		else {
+			return color / number;
+		}
 	}
 
 	// RECURSIVELY CALCULATE COLOR
@@ -353,13 +360,17 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	// Reflected component
 	Eigen::Vector3f reflected_ray = reflect(dir.normalized(), minimum_face.normal.normalized());
 	Eigen::Vector3f offset_reflection = interPoint + (0.001 * reflected_ray);
-	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1);
+	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1, debug);
 
 	// Add all colors
-	return (direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks));
+	Eigen::Vector3f color2 = (direct_color + (1 - transparency) * reflected_color.cwiseProduct(ks)) / 2;
+	color2(0) = max(min(color2(0), 1.f), 0.f);
+	color2(1) = max(min(color2(1), 1.f), 0.f);
+	color2(2) = max(min(color2(2), 1.f), 0.f);
+	return color2;
 }
 
-std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir) {
+std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir, bool debug) {
 	// Parameters to keep track of current faces and the closest face
 	std::pair<Eigen::Vector3f, float> minimum_point_and_distance = std::pair<Eigen::Vector3f, float>(Eigen::Vector3f::Zero(), INFINITY);
 	Tucano::Face minimum_face;
@@ -369,6 +380,7 @@ std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(
 	// Loop through all Bounding boxes.
 	for (BoundingBox* box : BoundingBox::boxes) {
 		if (intersectBox(origin, dir, *box)) {
+			if (debug) { debugBoxes.push_back(box); }
 			for (int i = 0; i < box->faces.size(); i++) {
 				current_face = *box->faces[i];
 				current_distance_and_point = calculateDistance(origin, dir, current_face);
@@ -386,7 +398,6 @@ std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(
 
 void Flyscene::generateBoundingBoxes() {
 	BoundingBox::mesh = &mesh;
-	BoundingBox::triangleColors = std::vector<Eigen::Vector3f>(mesh.getNumberOfFaces(), Eigen::Vector3f(-1, -1, -1));
 	BoundingBox* box = new BoundingBox(true);
 	box->fitMesh();
 
@@ -476,7 +487,7 @@ Eigen::Vector3f Flyscene::calculateReflectColor(Tucano::Face minimum_face, Eigen
 	// Reflected component
 	Eigen::Vector3f reflected_ray = reflect(dir, interpolateNormal(minimum_face, interPoint));
 	Eigen::Vector3f offset_origin = interPoint + (0.003 * reflected_ray);
-	Eigen::Vector3f reflected_color = traceRay(offset_origin, reflected_ray, depth + 1);
+	Eigen::Vector3f reflected_color = traceRay(offset_origin, reflected_ray, depth + 1, false);
 
 
 	// Refracted component
@@ -624,5 +635,5 @@ Eigen::Vector3f Flyscene::calculateColor(Tucano::Face minimum_face, Eigen::Vecto
 	for (int i = 0; i < dirLights.size(); i++) {
 		sumColor += calcSingleColor(minimum_face, origin, get<0>(dirLights[i]), get<1>(dirLights[i]), pointP);
 	}
-	return Eigen::Vector3f(min(sumColor.x(), 1.f), min(sumColor.y(), 1.f), min(sumColor.z(), 1.f));
+	return Eigen::Vector3f(max(min(sumColor.x(), 1.f), 0.f), max(min(sumColor.y(), 1.f), 0.f), max(min(sumColor.z(), 1.f), 0.f));
 }
