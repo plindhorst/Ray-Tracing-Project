@@ -358,7 +358,7 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	}
 
 	// Reflected component
-	Eigen::Vector3f reflected_ray = reflect(dir.normalized(), minimum_face.normal.normalized());
+	Eigen::Vector3f reflected_ray = reflect(dir.normalized(), interpolateNormal(minimum_face, interPoint));
 	Eigen::Vector3f offset_reflection = interPoint + (0.001 * reflected_ray);
 	Eigen::Vector3f reflected_color = traceRay(offset_reflection, reflected_ray, depth + 1, debug);
 
@@ -368,7 +368,6 @@ Eigen::Vector3f Flyscene::traceRay(Eigen::Vector3f& origin, Eigen::Vector3f& dir
 	color2(1) = max(min(color2(1), 1.f), 0.f);
 	color2(2) = max(min(color2(2), 1.f), 0.f);
 	return color2;
-}
 }
 
 std::tuple<Tucano::Face, Eigen::Vector3f, float> Flyscene::calculateMinimumFace(Eigen::Vector3f& origin, Eigen::Vector3f dir, bool debug) {
